@@ -3,596 +3,333 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SmartRoute | Firebase + Экспорт в Access</title>
+    <title>SmartRoute | Firebase + Access Sync</title>
     
-    <!-- Tailwind CSS + Fonts -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     
-    <!-- Firebase SDK -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDocs, query, where, updateDoc, doc, deleteDoc, orderBy, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
-        import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-        
-        // 🔥 ЗАМЕНИ ЭТИ ДАННЫЕ НА СВОИ ИЗ КОНСОЛИ FIREBASE 🔥
-        const firebaseConfig = {
-  apiKey: "AIzaSyCHpQu8po8ww50PHN6BdfMrUVtAXBnmwzo",
-  authDomain: "smart-route-8ff6a.firebaseapp.com",
-  projectId: "smart-route-8ff6a",
-  storageBucket: "smart-route-8ff6a.firebasestorage.app",
-  messagingSenderId: "610410290985",
-  appId: "1:610410290985:web:e59962bd9b42d935bda138",
-  measurementId: "G-4CZX8SNDBD"
-};
-        
-        // Инициализация
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
-        const provider = new GoogleAuthProvider();
-        
-        // Глобальный доступ
-        window.db = db;
-        window.auth = auth;
-        window.provider = provider;
-        window.collection = collection;
-        window.addDoc = addDoc;
-        window.getDocs = getDocs;
-        window.query = query;
-        window.where = where;
-        window.updateDoc = updateDoc;
-        window.doc = doc;
-        window.deleteDoc = deleteDoc;
-        window.orderBy = orderBy;
-        window.serverTimestamp = serverTimestamp;
-        window.Timestamp = Timestamp;
-        
-        console.log("✅ Firebase инициализирован");
-    </script>
-    
     <style>
         * { font-family: 'Inter', sans-serif; }
-        body { background: linear-gradient(135deg, #0a0f1e 0%, #0c1222 100%); min-height: 100vh; }
-        .glass-card { background: rgba(255,255,255,0.03); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.05); border-radius: 24px; }
-        .btn-primary { background: linear-gradient(90deg, #3b82f6, #8b5cf6); transition: all 0.3s ease; }
-        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(59,130,246,0.4); }
-        .status-new { background: #f59e0b20; color: #fbbf24; border: 1px solid #f59e0b40; border-radius: 100px; padding: 4px 12px; font-size: 12px; }
-        .status-working { background: #3b82f620; color: #60a5fa; border: 1px solid #3b82f640; border-radius: 100px; padding: 4px 12px; font-size: 12px; }
-        .status-done { background: #10b98120; color: #34d399; border: 1px solid #10b98140; border-radius: 100px; padding: 4px 12px; font-size: 12px; }
-        .scrollbar-thin::-webkit-scrollbar { width: 6px; }
-        .scrollbar-thin::-webkit-scrollbar-track { background: #1e243b; border-radius: 10px; }
-        .scrollbar-thin::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 10px; }
+        body { background: #0f172a; color: #f8fafc; min-height: 100vh; }
+        .glass-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); border-radius: 1.5rem; }
+        .btn-primary { background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); transition: all 0.2s; }
+        .btn-primary:hover { transform: scale(1.02); box-shadow: 0 0 20px rgba(59,130,246,0.4); }
+        .status-new { color: #fbbf24; background: rgba(251, 191, 36, 0.1); padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; border: 1px solid rgba(251, 191, 36, 0.3); }
+        .status-working { color: #60a5fa; background: rgba(96, 165, 250, 0.1); padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; border: 1px solid rgba(96, 165, 250, 0.3); }
+        .status-done { color: #34d399; background: rgba(52, 211, 153, 0.1); padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; border: 1px solid rgba(52, 211, 153, 0.3); }
     </style>
 </head>
-<body class="text-gray-200">
+<body>
 
-<div class="max-w-7xl mx-auto px-4 py-6">
-    <!-- Шапка -->
-    <div class="flex flex-wrap justify-between items-center gap-4 mb-8">
-        <div class="flex items-center gap-3">
-            <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
-                <i class="fas fa-route text-white text-xl"></i>
+<div class="max-w-6xl mx-auto px-4 py-8">
+    <header class="flex justify-between items-center mb-10">
+        <div class="flex items-center gap-4">
+            <div class="p-3 bg-blue-600 rounded-2xl shadow-lg shadow-blue-500/20">
+                <i class="fas fa-route text-2xl text-white"></i>
             </div>
-            <div>
-                <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">SmartRoute</h1>
-                <p class="text-gray-400 text-xs">Firebase Cloud + Экспорт в Access</p>
-            </div>
+            <h1 class="text-3xl font-extrabold tracking-tight">Smart<span class="text-blue-500">Route</span></h1>
         </div>
-        <div class="flex gap-3">
-            <button id="exportAccessBtn" class="px-4 py-2 bg-green-600/30 hover:bg-green-600/50 rounded-xl text-sm transition">
-                <i class="fas fa-file-excel mr-2"></i>Экспорт в Access (CSV)
+        
+        <div class="flex items-center gap-4">
+            <button id="exportAccessBtn" class="hidden md:flex items-center gap-2 px-4 py-2 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-xl hover:bg-emerald-600/30 transition">
+                <i class="fas fa-database"></i> Синхронизация с Access
             </button>
-            <div id="userInfo" class="flex items-center gap-3">
-                <span id="userName" class="text-sm hidden md:inline">Гость</span>
-                <button id="authBtn" class="px-5 py-2.5 rounded-xl bg-gray-800/50 border border-gray-700 hover:bg-gray-700 transition text-sm">
-                    <i class="fas fa-google mr-2"></i>Войти
+            <div id="authSection">
+                <button id="authBtn" class="flex items-center gap-2 px-6 py-2.5 bg-slate-800 border border-slate-700 rounded-xl hover:bg-slate-700 transition">
+                    <i class="fab fa-google text-red-400"></i> <span>Войти через Google</span>
                 </button>
             </div>
         </div>
-    </div>
+    </header>
 
-    <!-- Выбор роли (после входа) -->
-    <div id="roleSelection" class="glass-card p-8 text-center mb-6 hidden">
-        <h2 class="text-2xl font-bold mb-4">Выберите роль</h2>
-        <div class="flex gap-4 justify-center flex-wrap">
-            <button id="roleDispatcher" class="px-8 py-4 bg-blue-600/30 hover:bg-blue-600/50 rounded-2xl transition text-lg font-medium">
-                <i class="fas fa-chalkboard-user mr-2"></i>Диспетчер
+    <div id="roleSelection" class="hidden glass-card p-10 text-center max-w-2xl mx-auto my-20">
+        <h2 class="text-2xl font-bold mb-2">Добро пожаловать!</h2>
+        <p class="text-slate-400 mb-8">Выберите вашу роль в системе для настройки рабочего пространства</p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <button onclick="setUserRole('диспетчер')" class="p-6 bg-blue-600/10 border border-blue-500/30 rounded-2xl hover:bg-blue-600/20 transition group">
+                <i class="fas fa-headset text-4xl mb-4 text-blue-500 group-hover:scale-110 transition"></i>
+                <h3 class="text-xl font-bold">Диспетчер</h3>
+                <p class="text-sm text-slate-400 mt-2">Управление заказами и курьерами</p>
             </button>
-            <button id="roleCourier" class="px-8 py-4 bg-purple-600/30 hover:bg-purple-600/50 rounded-2xl transition text-lg font-medium">
-                <i class="fas fa-truck-fast mr-2"></i>Курьер
+            <button onclick="setUserRole('курьер')" class="p-6 bg-purple-600/10 border border-purple-500/30 rounded-2xl hover:bg-purple-600/20 transition group">
+                <i class="fas fa-truck text-4xl mb-4 text-purple-500 group-hover:scale-110 transition"></i>
+                <h3 class="text-xl font-bold">Курьер</h3>
+                <p class="text-sm text-slate-400 mt-2">Доставка и отчетность</p>
             </button>
         </div>
     </div>
 
-    <!-- Панель диспетчера -->
-    <div id="dispatcherPanel" class="hidden space-y-6">
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <!-- Заказы -->
-            <div class="lg:col-span-2 glass-card p-5">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-semibold"><i class="fas fa-box text-blue-400 mr-2"></i>Заказы</h2>
-                    <button id="newOrderBtn" class="px-4 py-2 bg-blue-600/30 rounded-xl text-sm hover:bg-blue-600/50">
-                        <i class="fas fa-plus mr-1"></i>Новый заказ
+    <main id="dispatcherPanel" class="hidden space-y-8">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <section class="lg:col-span-2 glass-card p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold flex items-center gap-2">
+                        <i class="fas fa-list-ul text-blue-500"></i> Активные заказы
+                    </h2>
+                    <button id="openModalBtn" class="btn-primary px-4 py-2 rounded-lg text-sm font-semibold">
+                        + Добавить заказ
                     </button>
                 </div>
-                <div id="ordersList" class="space-y-3 max-h-96 overflow-y-auto scrollbar-thin pr-2"></div>
-            </div>
-            <!-- Курьеры -->
-            <div class="glass-card p-5">
-                <h2 class="text-xl font-semibold mb-4"><i class="fas fa-users text-purple-400 mr-2"></i>Курьеры</h2>
-                <div id="couriersList" class="space-y-3 max-h-96 overflow-y-auto scrollbar-thin"></div>
-                <button id="addCourierBtn" class="w-full mt-4 px-4 py-2 bg-gray-700/50 rounded-xl text-sm hover:bg-gray-700">
-                    <i class="fas fa-plus mr-1"></i>Добавить курьера
-                </button>
-            </div>
-        </div>
-        <div class="glass-card p-5">
-            <div class="flex justify-between items-center flex-wrap gap-4">
-                <h2 class="text-xl font-semibold"><i class="fas fa-map text-green-400 mr-2"></i>Оптимизация маршрутов</h2>
-                <button id="optimizeBtn" class="btn-primary px-6 py-2.5 rounded-xl font-medium">
-                    <i class="fas fa-magic mr-2"></i>Оптимизировать
-                </button>
-            </div>
-            <div id="optimizationResult" class="mt-4 hidden"></div>
-        </div>
-    </div>
+                <div id="ordersList" class="space-y-4 max-h-[500px] overflow-y-auto pr-2">
+                    </div>
+            </section>
 
-    <!-- Панель курьера -->
-    <div id="courierPanel" class="hidden space-y-6">
-        <div class="glass-card p-5">
-            <h2 class="text-xl font-semibold mb-4"><i class="fas fa-list-check text-green-400 mr-2"></i>Мои задания</h2>
-            <div id="courierTasks" class="space-y-3 max-h-96 overflow-y-auto scrollbar-thin"></div>
+            <aside class="space-y-8">
+                <div class="glass-card p-6">
+                    <h2 class="text-xl font-bold mb-6 flex items-center gap-2">
+                        <i class="fas fa-users text-purple-500"></i> Курьеры
+                    </h2>
+                    <div id="couriersList" class="space-y-4"></div>
+                </div>
+                <button id="optimizeBtn" class="w-full py-4 btn-primary rounded-2xl font-bold text-lg shadow-lg">
+                    <i class="fas fa-bolt mr-2"></i> Оптимизировать
+                </button>
+            </aside>
         </div>
-        <div class="glass-card p-5">
-            <button id="endShiftBtn" class="w-full py-3 bg-red-600/30 hover:bg-red-600/50 rounded-xl transition">
-                <i class="fas fa-flag-checkered mr-2"></i>Завершить смену
-            </button>
+    </main>
+
+    <main id="courierPanel" class="hidden max-w-2xl mx-auto space-y-6">
+        <div class="glass-card p-6 border-l-4 border-l-blue-500">
+            <h2 class="text-xl font-bold mb-4 italic" id="courierWelcome">Привет, Курьер!</h2>
+            <div id="courierTasks" class="space-y-4">
+                </div>
         </div>
-    </div>
+        <button id="endShiftBtn" class="w-full py-4 bg-red-500/20 text-red-500 border border-red-500/30 rounded-2xl font-bold hover:bg-red-500/30 transition">
+            Завершить смену
+        </button>
+    </main>
 </div>
 
-<!-- Модальное окно заказа -->
-<div id="orderModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 hidden">
-    <div class="bg-gray-900 rounded-2xl p-6 w-full max-w-md border border-gray-700">
-        <h3 class="text-xl font-bold mb-4">Новый заказ</h3>
-        <div class="space-y-3">
-            <input type="text" id="orderAddress" placeholder="Адрес доставки" class="w-full px-4 py-3 bg-gray-800 rounded-xl border border-gray-700 focus:outline-none focus:border-blue-500">
-            <input type="text" id="orderPhone" placeholder="Телефон получателя" class="w-full px-4 py-3 bg-gray-800 rounded-xl border border-gray-700 focus:outline-none focus:border-blue-500">
-            <input type="number" id="orderWeight" placeholder="Вес (кг)" class="w-full px-4 py-3 bg-gray-800 rounded-xl border border-gray-700 focus:outline-none focus:border-blue-500">
-            <div class="flex gap-3">
-                <button id="saveOrderBtn" class="flex-1 btn-primary py-3 rounded-xl font-medium">Сохранить</button>
-                <button id="closeModalBtn" class="flex-1 bg-gray-700 py-3 rounded-xl hover:bg-gray-600">Отмена</button>
+<div id="orderModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
+    <div class="glass-card p-8 w-full max-w-md shadow-2xl">
+        <h3 class="text-2xl font-bold mb-6">Детали заказа</h3>
+        <div class="space-y-4">
+            <div>
+                <label class="text-xs text-slate-400 ml-2">Адрес</label>
+                <input id="addrInp" type="text" class="w-full bg-slate-800 border border-slate-700 p-3 rounded-xl mt-1 focus:border-blue-500 outline-none">
+            </div>
+            <div>
+                <label class="text-xs text-slate-400 ml-2">Телефон</label>
+                <input id="phoneInp" type="text" class="w-full bg-slate-800 border border-slate-700 p-3 rounded-xl mt-1 focus:border-blue-500 outline-none">
+            </div>
+            <div class="flex gap-4">
+                <button id="saveOrder" class="flex-1 btn-primary py-3 rounded-xl font-bold">Создать</button>
+                <button id="closeModal" class="flex-1 bg-slate-700 py-3 rounded-xl font-bold">Отмена</button>
             </div>
         </div>
     </div>
 </div>
 
 <script type="module">
-    // ========== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ==========
-    let currentUser = null;
-    let currentUserRole = null;
-    let currentUserId = null;
-    let currentCourierDocId = null;
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getFirestore, collection, addDoc, getDocs, query, where, updateDoc, doc, serverTimestamp, onSnapshot, orderBy } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+
+    // --- КОНФИГУРАЦИЯ (ТВОЯ) ---
+    const firebaseConfig = {
+        apiKey: "AIzaSyCHpQu8po8ww50PHN6BdfMrUVtAXBnmwzo",
+        authDomain: "smart-route-8ff6a.firebaseapp.com",
+        projectId: "smart-route-8ff6a",
+        storageBucket: "smart-route-8ff6a.firebasestorage.app",
+        messagingSenderId: "610410290985",
+        appId: "1:610410290985:web:e59962bd9b42d935bda138"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+    const provider = new GoogleAuthProvider();
+
+    let userState = { uid: null, role: null, name: null };
+
+    // --- АВТОРИЗАЦИЯ ---
+    const authBtn = document.getElementById('authBtn');
     
-    // ========== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========
-    function escapeHtml(str) {
-        if (!str) return '';
-        return str.replace(/[&<>]/g, function(m) {
-            if (m === '&') return '&amp;';
-            if (m === '<') return '&lt;';
-            if (m === '>') return '&gt;';
-            return m;
+    authBtn.onclick = async () => {
+        if (userState.uid) {
+            await signOut(auth);
+            location.reload();
+        } else {
+            await signInWithPopup(auth, provider);
+        }
+    };
+
+    onAuthStateChanged(auth, async (user) => {
+        if (user) {
+            userState.uid = user.uid;
+            userState.name = user.displayName;
+            authBtn.innerHTML = `<i class="fas fa-sign-out-alt"></i> Выйти (${user.displayName.split(' ')[0]})`;
+            
+            // Проверка роли в БД
+            const q = query(collection(db, "users"), where("uid", "==", user.uid));
+            const snap = await getDocs(q);
+            
+            if (snap.empty) {
+                document.getElementById('roleSelection').classList.remove('hidden');
+            } else {
+                userState.role = snap.docs[0].data().role;
+                showPanel();
+            }
+        }
+    });
+
+    window.setUserRole = async (role) => {
+        await addDoc(collection(db, "users"), {
+            uid: userState.uid,
+            name: userState.name,
+            role: role,
+            createdAt: serverTimestamp()
+        });
+        // Если курьер, создаем его в списке курьеров
+        if (role === 'курьер') {
+            await addDoc(collection(db, "couriers"), {
+                uid: userState.uid,
+                name: userState.name,
+                isActive: true,
+                vehicle: 'Легковая'
+            });
+        }
+        location.reload();
+    };
+
+    function showPanel() {
+        document.getElementById('roleSelection').classList.add('hidden');
+        if (userState.role === 'диспетчер') {
+            document.getElementById('dispatcherPanel').classList.remove('hidden');
+            initDispatcher();
+        } else {
+            document.getElementById('courierPanel').classList.remove('hidden');
+            document.getElementById('courierWelcome').innerText = `Привет, ${userState.name}!`;
+            initCourier();
+        }
+    }
+
+    // --- ЛОГИКА ДИСПЕТЧЕРА ---
+    function initDispatcher() {
+        // Подписка на заказы в реальном времени
+        onSnapshot(query(collection(db, "orders"), orderBy("createdAt", "desc")), (snap) => {
+            const list = document.getElementById('ordersList');
+            list.innerHTML = '';
+            snap.forEach(doc => {
+                const d = doc.data();
+                list.innerHTML += `
+                    <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700 flex justify-between items-center">
+                        <div>
+                            <div class="font-bold">${d.address}</div>
+                            <div class="text-sm text-slate-400">${d.phone}</div>
+                        </div>
+                        <span class="status-${d.status === 'новый' ? 'new' : (d.status === 'в работе' ? 'working' : 'done')}">${d.status}</span>
+                    </div>
+                `;
+            });
+        });
+
+        // Подписка на курьеров
+        onSnapshot(collection(db, "couriers"), (snap) => {
+            const list = document.getElementById('couriersList');
+            list.innerHTML = '';
+            snap.forEach(doc => {
+                const c = doc.data();
+                list.innerHTML += `
+                    <div class="flex items-center gap-3 p-3 bg-slate-800/30 rounded-xl border border-slate-700">
+                        <div class="w-2 h-2 rounded-full ${c.isActive ? 'bg-green-500 animate-pulse' : 'bg-slate-600'}"></div>
+                        <div class="text-sm font-medium">${c.name}</div>
+                    </div>
+                `;
+            });
         });
     }
-    
-    function formatDate(timestamp) {
-        if (!timestamp) return '—';
-        if (timestamp.toDate) return timestamp.toDate().toLocaleString();
-        return new Date(timestamp).toLocaleString();
-    }
-    
-    // ========== ЗАГРУЗКА ЗАКАЗОВ (диспетчер) ==========
-    async function loadOrders() {
-        if (!window.db) return;
-        try {
-            const q = query(collection(window.db, "orders"), orderBy("createdAt", "desc"));
-            const snapshot = await getDocs(q);
-            const orders = [];
-            snapshot.forEach(doc => orders.push({ id: doc.id, ...doc.data() }));
-            
-            const container = document.getElementById('ordersList');
-            if (!container) return;
-            
-            if (orders.length === 0) {
-                container.innerHTML = '<div class="text-center py-8 text-gray-500"><i class="fas fa-inbox text-3xl mb-2"></i><p>Нет заказов</p></div>';
-                return;
-            }
-            
-            container.innerHTML = orders.map(order => `
-                <div class="bg-gray-800/30 rounded-xl p-4 border border-gray-700/50">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <p class="font-medium"><i class="fas fa-location-dot text-blue-400 mr-2"></i>${escapeHtml(order.address)}</p>
-                            <p class="text-sm text-gray-400 mt-1"><i class="fas fa-phone mr-2"></i>${escapeHtml(order.phone)}</p>
-                            <p class="text-xs text-gray-500">Вес: ${order.weight || 0} кг | Создан: ${formatDate(order.createdAt)}</p>
-                        </div>
-                        <span class="status-${order.status === 'новый' ? 'new' : (order.status === 'в работе' ? 'working' : 'done')}">
-                            ${order.status === 'новый' ? 'Новый' : (order.status === 'в работе' ? 'В работе' : 'Выполнен')}
-                        </span>
-                    </div>
-                </div>
-            `).join('');
-        } catch(e) { console.error("loadOrders error:", e); }
-    }
-    
-    // ========== ЗАГРУЗКА КУРЬЕРОВ ==========
-    async function loadCouriers() {
-        if (!window.db) return;
-        try {
-            const snapshot = await getDocs(collection(window.db, "couriers"));
-            const couriers = [];
-            snapshot.forEach(doc => couriers.push({ id: doc.id, ...doc.data() }));
-            
-            const container = document.getElementById('couriersList');
-            if (!container) return;
-            
-            if (couriers.length === 0) {
-                container.innerHTML = '<div class="text-center py-8 text-gray-500"><i class="fas fa-user-slash text-3xl mb-2"></i><p>Нет курьеров</p></div>';
-                return;
-            }
-            
-            container.innerHTML = couriers.map(c => `
-                <div class="bg-gray-800/30 rounded-xl p-3 flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center"><i class="fas fa-user"></i></div>
-                    <div class="flex-1">
-                        <p class="font-medium">${escapeHtml(c.name)}</p>
-                        <p class="text-xs text-gray-400">${c.isActive ? '🟢 на смене' : '⚫ не в смене'} • ${c.vehicle || 'авто'}</p>
-                    </div>
-                </div>
-            `).join('');
-        } catch(e) { console.error("loadCouriers error:", e); }
-    }
-    
-    // ========== СОЗДАНИЕ ЗАКАЗА ==========
-    async function createOrder(address, phone, weight) {
-        if (!window.db) return;
-        try {
-            const order = {
-                address: address,
-                phone: phone,
-                weight: weight || 0,
-                status: 'новый',
-                courierId: null,
-                createdAt: serverTimestamp(),
-                createdBy: currentUserId
-            };
-            const docRef = await addDoc(collection(window.db, "orders"), order);
-            console.log('Заказ создан, ID:', docRef.id);
-            await loadOrders();
-            return docRef.id;
-        } catch(e) { console.error("createOrder error:", e); alert("Ошибка создания заказа"); }
-    }
-    
-    // ========== ДОБАВЛЕНИЕ КУРЬЕРА ==========
-    async function addCourier(name) {
-        if (!window.db) return;
-        try {
-            await addDoc(collection(window.db, "couriers"), {
-                name: name,
-                isActive: true,
-                vehicle: 'авто',
-                createdAt: serverTimestamp()
+
+    // --- МОДАЛЬНОЕ ОКНО И ЗАКАЗЫ ---
+    const modal = document.getElementById('orderModal');
+    document.getElementById('openModalBtn').onclick = () => modal.classList.remove('hidden');
+    document.getElementById('closeModal').onclick = () => modal.classList.add('hidden');
+
+    document.getElementById('saveOrder').onclick = async () => {
+        const address = document.getElementById('addrInp').value;
+        const phone = document.getElementById('phoneInp').value;
+        if (!address || !phone) return alert('Заполните поля!');
+
+        await addDoc(collection(db, "orders"), {
+            address,
+            phone,
+            status: 'новый',
+            createdAt: serverTimestamp()
+        });
+        modal.classList.add('hidden');
+    };
+
+    // --- ОПТИМИЗАЦИЯ (ПРОСТОЕ РАСПРЕДЕЛЕНИЕ) ---
+    document.getElementById('optimizeBtn').onclick = async () => {
+        const ordersSnap = await getDocs(query(collection(db, "orders"), where("status", "==", "новый")));
+        const couriersSnap = await getDocs(query(collection(db, "couriers"), where("isActive", "==", true)));
+        
+        if (ordersSnap.empty || couriersSnap.empty) return alert("Нужны заказы и активные курьеры!");
+
+        const couriers = couriersSnap.docs.map(d => d.id);
+        let i = 0;
+        
+        for (const orderDoc of ordersSnap.docs) {
+            await updateDoc(doc(db, "orders", orderDoc.id), {
+                status: 'в работе',
+                courierId: couriers[i % couriers.length]
             });
-            await loadCouriers();
-            alert(`✅ Курьер ${name} добавлен в Firebase!`);
-        } catch(e) { console.error("addCourier error:", e); }
-    }
-    
-    // ========== ОПТИМИЗАЦИЯ МАРШРУТОВ ==========
-    async function optimizeRoutes() {
-        if (!window.db) return;
-        try {
-            // Получаем новые заказы
-            const qOrders = query(collection(window.db, "orders"), where("status", "==", "новый"));
-            const ordersSnap = await getDocs(qOrders);
-            const orders = [];
-            ordersSnap.forEach(doc => orders.push({ id: doc.id, ...doc.data() }));
-            
-            // Получаем активных курьеров
-            const qCouriers = query(collection(window.db, "couriers"), where("isActive", "==", true));
-            const couriersSnap = await getDocs(qCouriers);
-            const couriers = [];
-            couriersSnap.forEach(doc => couriers.push({ id: doc.id, ...doc.data() }));
-            
-            if (orders.length === 0) {
-                alert('Нет новых заказов для оптимизации');
-                return;
-            }
-            if (couriers.length === 0) {
-                alert('Нет активных курьеров');
-                return;
-            }
-            
-            // Round-Robin распределение
-            let courierIndex = 0;
-            for (const order of orders) {
-                const courier = couriers[courierIndex % couriers.length];
-                await updateDoc(doc(window.db, "orders", order.id), { 
-                    status: 'в работе', 
-                    courierId: courier.id,
-                    assignedAt: serverTimestamp()
-                });
-                courierIndex++;
-            }
-            
-            const resultDiv = document.getElementById('optimizationResult');
-            resultDiv.innerHTML = `
-                <div class="bg-green-500/10 border border-green-500/30 rounded-xl p-4">
-                    <i class="fas fa-check-circle text-green-400 mr-2"></i>
-                    <span class="font-medium">Оптимизация завершена!</span>
-                    <span class="text-sm text-gray-300 ml-4">Распределено ${orders.length} заказов между ${couriers.length} курьерами</span>
-                </div>
-            `;
-            resultDiv.classList.remove('hidden');
-            setTimeout(() => resultDiv.classList.add('hidden'), 5000);
-            await loadOrders();
-        } catch(e) { console.error("optimizeRoutes error:", e); alert("Ошибка оптимизации"); }
-    }
-    
-    // ========== ЗАГРУЗКА ЗАДАНИЙ КУРЬЕРА ==========
-    async function loadCourierTasks() {
-        if (!window.db || !currentCourierDocId) return;
-        try {
-            const q = query(collection(window.db, "orders"), where("courierId", "==", currentCourierDocId), where("status", "in", ["новый", "в работе"]));
-            const snapshot = await getDocs(q);
-            const orders = [];
-            snapshot.forEach(doc => orders.push({ id: doc.id, ...doc.data() }));
-            
-            const container = document.getElementById('courierTasks');
-            if (!container) return;
-            
-            if (orders.length === 0) {
-                container.innerHTML = '<div class="text-center py-8 text-gray-500"><i class="fas fa-map-pin"></i><p>Нет активных заданий</p></div>';
-                return;
-            }
-            
-            container.innerHTML = orders.map(order => `
-                <div class="bg-gray-800/30 rounded-xl p-4 border border-gray-700/50">
-                    <div class="flex justify-between items-center flex-wrap gap-3">
-                        <div>
-                            <p class="font-medium"><i class="fas fa-location-dot text-blue-400 mr-2"></i>${escapeHtml(order.address)}</p>
-                            <p class="text-sm text-gray-400 mt-1">📞 ${escapeHtml(order.phone)}</p>
-                            <p class="text-xs text-gray-500">Вес: ${order.weight || 0} кг</p>
-                        </div>
-                        <button onclick="window.completeOrder('${order.id}')" class="px-4 py-2 bg-green-600/30 hover:bg-green-600/50 rounded-xl text-sm transition">
-                            <i class="fas fa-check mr-1"></i>Выполнен
+            i++;
+        }
+        alert("Маршруты распределены!");
+    };
+
+    // --- ЛОГИКА КУРЬЕРА ---
+    async function initCourier() {
+        const cQuery = query(collection(db, "couriers"), where("uid", "==", userState.uid));
+        const cSnap = await getDocs(cQuery);
+        if (cSnap.empty) return;
+        const courierId = cSnap.docs[0].id;
+
+        onSnapshot(query(collection(db, "orders"), where("courierId", "==", courierId)), (snap) => {
+            const list = document.getElementById('courierTasks');
+            list.innerHTML = '';
+            snap.forEach(orderDoc => {
+                const d = orderDoc.data();
+                if (d.status === 'выполнен') return;
+                
+                list.innerHTML += `
+                    <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-xl">
+                        <div class="text-xs text-blue-400 font-bold mb-1">АДРЕС ДОСТАВКИ</div>
+                        <div class="text-xl font-bold mb-4">${d.address}</div>
+                        <button onclick="completeTask('${orderDoc.id}')" class="w-full py-3 bg-green-600 rounded-xl font-bold hover:bg-green-500 transition">
+                            ВЫПОЛНЕНО
                         </button>
                     </div>
-                </div>
-            `).join('');
-        } catch(e) { console.error("loadCourierTasks error:", e); }
-    }
-    
-    window.completeOrder = async function(orderId) {
-        if (!window.db) return;
-        try {
-            await updateDoc(doc(window.db, "orders", orderId), { 
-                status: 'выполнен',
-                completedAt: serverTimestamp()
+                `;
             });
-            alert('✅ Доставка отмечена как выполненная!');
-            await loadCourierTasks();
-            await loadOrders(); // для диспетчера, если он открыт
-        } catch(e) { console.error(e); alert("Ошибка"); }
+        });
+    }
+
+    window.completeTask = async (id) => {
+        await updateDoc(doc(db, "orders", id), { status: 'выполнен' });
     };
-    
-    async function endShift() {
-        if (!window.db || !currentCourierDocId) return;
-        try {
-            await updateDoc(doc(window.db, "couriers", currentCourierDocId), { isActive: false });
-            alert('Смена завершена! Данные сохранены в Firebase.');
-            document.getElementById('roleSelection').classList.remove('hidden');
-            document.getElementById('courierPanel').classList.add('hidden');
-            currentUserRole = null;
-        } catch(e) { console.error(e); }
-    }
-    
-    // ========== ЭКСПОРТ В CSV (ДЛЯ ACCESS) ==========
-    async function exportToCSV() {
-        if (!window.db) return;
-        try {
-            // Собираем все коллекции
-            const collections = ['orders', 'couriers', 'users'];
-            const allData = {};
-            
-            for (const coll of collections) {
-                const snapshot = await getDocs(collection(window.db, coll));
-                const data = [];
-                snapshot.forEach(doc => {
-                    const docData = doc.data();
-                    // Преобразуем Timestamp в строку
-                    Object.keys(docData).forEach(key => {
-                        if (docData[key] && docData[key].toDate) {
-                            docData[key] = docData[key].toDate().toISOString();
-                        }
-                    });
-                    data.push({ id: doc.id, ...docData });
-                });
-                allData[coll] = data;
-            }
-            
-            // Создаём ZIP с CSV файлами
-            let csvContent = '';
-            for (const [tableName, rows] of Object.entries(allData)) {
-                if (rows.length === 0) continue;
-                const headers = Object.keys(rows[0]);
-                csvContent += `\n--- ${tableName.toUpperCase()} ---\n`;
-                csvContent += headers.join(',') + '\n';
-                for (const row of rows) {
-                    const values = headers.map(h => {
-                        let val = row[h];
-                        if (val === undefined || val === null) return '';
-                        if (typeof val === 'object') return JSON.stringify(val);
-                        return String(val).replace(/,/g, ';');
-                    });
-                    csvContent += values.join(',') + '\n';
-                }
-            }
-            
-            // Скачиваем файл
-            const blob = new Blob([csvContent], { type: 'text/csv' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `smartroute_export_${new Date().toISOString().slice(0,19)}.csv`;
-            a.click();
-            URL.revokeObjectURL(url);
-            alert('✅ Данные экспортированы в CSV.\nЭтот файл можно открыть в Excel и сохранить как .xlsx, затем импортировать в Access.');
-        } catch(e) { console.error("export error:", e); alert("Ошибка экспорта"); }
-    }
-    
-    // ========== АВТОРИЗАЦИЯ ==========
-    async function handleAuth() {
-        if (currentUser) {
-            await signOut(window.auth);
-            return;
-        }
-        try {
-            const result = await signInWithPopup(window.auth, window.provider);
-            const user = result.user;
-            
-            // Проверяем, есть ли пользователь в БД
-            const q = query(collection(window.db, "users"), where("uid", "==", user.uid));
-            const snapshot = await getDocs(q);
-            
-            if (snapshot.empty) {
-                // Новый пользователь — показываем выбор роли
-                currentUser = user;
-                currentUserId = user.uid;
-                document.getElementById('userName').innerHTML = `<i class="fas fa-user mr-1"></i>${user.displayName || user.email}`;
-                document.getElementById('roleSelection').classList.remove('hidden');
-                document.getElementById('dispatcherPanel').classList.add('hidden');
-                document.getElementById('courierPanel').classList.add('hidden');
-                document.getElementById('authBtn').innerHTML = '<i class="fas fa-sign-out-alt mr-2"></i>Выйти';
-            } else {
-                // Существующий пользователь
-                const userData = snapshot.docs[0].data();
-                currentUser = user;
-                currentUserId = user.uid;
-                currentUserRole = userData.role;
-                document.getElementById('userName').innerHTML = `<i class="fas fa-user mr-1"></i>${user.displayName || user.email}`;
-                document.getElementById('authBtn').innerHTML = '<i class="fas fa-sign-out-alt mr-2"></i>Выйти';
-                document.getElementById('roleSelection').classList.add('hidden');
-                
-                if (currentUserRole === 'диспетчер') {
-                    document.getElementById('dispatcherPanel').classList.remove('hidden');
-                    document.getElementById('courierPanel').classList.add('hidden');
-                    await loadOrders();
-                    await loadCouriers();
-                } else if (currentUserRole === 'курьер') {
-                    // Находим ID курьера
-                    const courierQ = query(collection(window.db, "couriers"), where("userId", "==", user.uid));
-                    const courierSnap = await getDocs(courierQ);
-                    if (!courierSnap.empty) currentCourierDocId = courierSnap.docs[0].id;
-                    document.getElementById('dispatcherPanel').classList.add('hidden');
-                    document.getElementById('courierPanel').classList.remove('hidden');
-                    await loadCourierTasks();
-                }
-            }
-        } catch(e) { console.error("Auth error:", e); alert("Ошибка входа"); }
-    }
-    
-    // Сохранение роли нового пользователя
-    document.getElementById('roleDispatcher')?.addEventListener('click', async () => {
-        if (currentUser) {
-            await addDoc(collection(window.db, "users"), {
-                uid: currentUser.uid,
-                email: currentUser.email,
-                name: currentUser.displayName,
-                role: 'диспетчер',
-                createdAt: serverTimestamp()
-            });
-            currentUserRole = 'диспетчер';
-            document.getElementById('roleSelection').classList.add('hidden');
-            document.getElementById('dispatcherPanel').classList.remove('hidden');
-            await loadOrders();
-            await loadCouriers();
-        }
-    });
-    
-    document.getElementById('roleCourier')?.addEventListener('click', async () => {
-        if (currentUser) {
-            await addDoc(collection(window.db, "users"), {
-                uid: currentUser.uid,
-                email: currentUser.email,
-                name: currentUser.displayName,
-                role: 'курьер',
-                createdAt: serverTimestamp()
-            });
-            // Создаём запись курьера
-            const courierRef = await addDoc(collection(window.db, "couriers"), {
-                userId: currentUser.uid,
-                name: currentUser.displayName,
-                isActive: true,
-                vehicle: 'авто',
-                createdAt: serverTimestamp()
-            });
-            currentCourierDocId = courierRef.id;
-            currentUserRole = 'курьер';
-            document.getElementById('roleSelection').classList.add('hidden');
-            document.getElementById('dispatcherPanel').classList.add('hidden');
-            document.getElementById('courierPanel').classList.remove('hidden');
-            await loadCourierTasks();
-        }
-    });
-    
-    // Следим за состоянием авторизации
-    onAuthStateChanged(window.auth, (user) => {
-        if (!user) {
-            currentUser = null;
-            currentUserRole = null;
-            document.getElementById('userName').innerHTML = 'Гость';
-            document.getElementById('authBtn').innerHTML = '<i class="fas fa-google mr-2"></i>Войти';
-            document.getElementById('roleSelection').classList.add('hidden');
-            document.getElementById('dispatcherPanel').classList.add('hidden');
-            document.getElementById('courierPanel').classList.add('hidden');
-        }
-    });
-    
-    // ========== ПОДКЛЮЧЕНИЕ КНОПОК ==========
-    document.getElementById('authBtn')?.addEventListener('click', handleAuth);
-    document.getElementById('exportAccessBtn')?.addEventListener('click', exportToCSV);
-    document.getElementById('newOrderBtn')?.addEventListener('click', () => {
-        document.getElementById('orderModal').classList.remove('hidden');
-    });
-    document.getElementById('closeModalBtn')?.addEventListener('click', () => {
-        document.getElementById('orderModal').classList.add('hidden');
-    });
-    document.getElementById('saveOrderBtn')?.addEventListener('click', async () => {
-        const address = document.getElementById('orderAddress').value;
-        const phone = document.getElementById('orderPhone').value;
-        const weight = parseFloat(document.getElementById('orderWeight').value) || 0;
-        if (!address || !phone) {
-            alert('Заполните адрес и телефон');
-            return;
-        }
-        await createOrder(address, phone, weight);
-        document.getElementById('orderAddress').value = '';
-        document.getElementById('orderPhone').value = '';
-        document.getElementById('orderWeight').value = '';
-        document.getElementById('orderModal').classList.add('hidden');
-        alert('✅ Заказ создан и сохранён в Firebase!');
-    });
-    document.getElementById('optimizeBtn')?.addEventListener('click', optimizeRoutes);
-    document.getElementById('endShiftBtn')?.addEventListener('click', endShift);
-    document.getElementById('addCourierBtn')?.addEventListener('click', async () => {
-        const name = prompt('Введите имя курьера:');
-        if (name) await addCourier(name);
-    });
-    
-    console.log("✅ SmartRoute с Firebase готов!");
+
+    // --- ЭКСПОРТ ДЛЯ ACCESS ---
+    document.getElementById('exportAccessBtn').onclick = async () => {
+        const snap = await getDocs(collection(db, "orders"));
+        let csv = "ID,Address,Phone,Status,CreatedAt\n";
+        
+        snap.forEach(doc => {
+            const d = doc.data();
+            const date = d.createdAt ? d.createdAt.toDate().toLocaleString() : '';
+            csv += `${doc.id},"${d.address}","${d.phone}",${d.status},"${date}"\n`;
+        });
+
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.setAttribute('href', url);
+        a.setAttribute('download', 'SmartRoute_to_Access.csv');
+        a.click();
+    };
+
 </script>
 </body>
 </html>
