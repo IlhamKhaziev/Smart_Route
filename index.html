@@ -187,14 +187,15 @@
     import { getFirestore, collection, addDoc, getDocs, query, where, updateDoc, doc, serverTimestamp, onSnapshot, deleteDoc, writeBatch, getDoc, orderBy } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
     import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
-    const firebaseConfig = {
-        apiKey: "AIzaSyCHpQu8po8ww50PHN6BdfMrUVtAXBnmwzo",
-        authDomain: "smart-route-8ff6a.firebaseapp.com",
-        projectId: "smart-route-8ff6a",
-        storageBucket: "smart-route-8ff6a.firebasestorage.app",
-        messagingSenderId: "610410290985",
-        appId: "1:610410290985:web:e59962bd9b42d935bda138"
-    };
+   const firebaseConfig = {
+  apiKey: "AIzaSyCHpQu8po8ww50PHN6BdfMrUVtAXBnmwzo",
+  authDomain: "smart-route-8ff6a.firebaseapp.com",
+  projectId: "smart-route-8ff6a",
+  storageBucket: "smart-route-8ff6a.firebasestorage.app",
+  messagingSenderId: "610410290985",
+  appId: "1:610410290985:web:e59962bd9b42d935bda138",
+  measurementId: "G-4CZX8SNDBD"
+};
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const auth = getAuth(app);
