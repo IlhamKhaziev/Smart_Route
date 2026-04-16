@@ -19,6 +19,8 @@
         .btn-success:hover { background: #059669; }
         .btn-danger { background: #dc2626; }
         .btn-danger:hover { background: #b91c1c; }
+        .btn-warning { background: #f59e0b; }
+        .btn-warning:hover { background: #d97706; }
         .status-badge { padding: 4px 12px; border-radius: 40px; font-size: 11px; font-weight: 600; width: fit-content; }
         .status-new { background: #f59e0b20; color: #fbbf24; border: 1px solid #f59e0b40; }
         .status-work { background: #3b82f620; color: #60a5fa; border: 1px solid #3b82f640; }
@@ -88,7 +90,6 @@
                 <div class="glass rounded-2xl p-5">
                     <h2 class="font-bold text-xl"><i class="fas fa-users text-purple-400 mr-2"></i> Курьеры на смене</h2>
                     <div id="dispatcherCouriersList" class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-64 overflow-y-auto scroll-custom"></div>
-                    <button id="addCourierQuickBtn" class="mt-4 w-full border border-dashed border-slate-600 py-2 rounded-xl text-slate-400 text-sm"><i class="fas fa-plus-circle mr-1"></i> Добавить курьера</button>
                 </div>
                 <div class="glass rounded-2xl p-5">
                     <h2 class="font-bold text-xl mb-2">📊 Статистика</h2>
@@ -104,11 +105,18 @@
 
     <!-- Панель курьера -->
     <div id="courierPanel" class="hidden max-w-5xl mx-auto space-y-6">
+        <!-- Кнопка выхода на смену / завершения смены -->
+        <div id="shiftControl" class="glass rounded-2xl p-4 flex justify-between items-center">
+            <span class="font-bold"><i class="fas fa-briefcase mr-2"></i>Статус смены:</span>
+            <span id="shiftStatus" class="text-red-400">Не в смене</span>
+            <button id="toggleShiftBtn" class="px-6 py-2 bg-emerald-600 rounded-xl font-bold text-sm">Выйти на смену</button>
+        </div>
+
         <!-- Блок ожидания -->
-        <div id="courierWaitBlock" class="glass rounded-2xl p-8 text-center">
+        <div id="courierWaitBlock" class="glass rounded-2xl p-8 text-center hidden">
             <i class="fas fa-hourglass-half text-4xl text-slate-500 mb-3"></i>
-            <h3 class="text-xl font-bold">Ожидание маршрута</h3>
-            <p class="text-slate-400">Диспетчер назначит заказы, они появятся здесь</p>
+            <h3 class="text-xl font-bold">Ожидание заказов</h3>
+            <p class="text-slate-400">Когда диспетчер назначит заказы, они появятся здесь</p>
         </div>
 
         <!-- Активный блок -->
@@ -143,8 +151,6 @@
                 <h3 class="font-bold mb-3"><i class="fas fa-history text-blue-400 mr-2"></i> История заказов</h3>
                 <div id="courierHistoryList" class="max-h-48 overflow-y-auto scroll-custom space-y-2"></div>
             </div>
-
-            <button id="courierFinishShiftBtn" class="hidden w-full py-4 bg-slate-800 border border-slate-700 rounded-xl font-bold hover:bg-slate-700">🏁 Завершить смену</button>
         </div>
     </div>
 </div>
@@ -179,7 +185,7 @@
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
     import { getFirestore, collection, addDoc, getDocs, query, where, updateDoc, doc, serverTimestamp, onSnapshot, deleteDoc, writeBatch, getDoc, orderBy } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
-    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyCHpQu8po8ww50PHN6BdfMrUVtAXBnmwzo",
@@ -196,6 +202,7 @@
 
     let currentUser = { uid: null, email: null, name: null, role: null, user_id: null };
     let courierDocId = null;
+    let courierIsActive = false;
     let pendingOrder = null;
     let currentDeliveryOrder = null;
     let mapInstance = null;
@@ -240,7 +247,7 @@
     document.getElementById('chooseCourier').onclick = () => pickRole('курьер');
     document.getElementById('saveVehicleBtn').onclick = async () => {
         const vehicle = document.getElementById('vehicleSelect').value;
-        await addDoc(collection(db, "couriers"), { user_id: currentUser.user_id, vehicle_type: vehicle, is_active: true, last_lat: 0, last_lng: 0, gps_updated_at: serverTimestamp() });
+        await addDoc(collection(db, "couriers"), { user_id: currentUser.user_id, vehicle_type: vehicle, is_active: false, last_lat: 0, last_lng: 0, gps_updated_at: serverTimestamp() });
         document.getElementById('courierVehicleModal').classList.add('hidden');
         currentUser.role = 'курьер';
         initUI();
@@ -290,13 +297,10 @@
             const c = docSnap.data();
             const userSnap = await getDoc(doc(db, "users", c.user_id));
             const userName = userSnap.exists() ? userSnap.data().name : 'Курьер';
-            html += `<div class="bg-slate-800/30 p-2 rounded-xl flex justify-between items-center"><span><i class="fas fa-user-circle text-purple-400"></i> ${userName} (${c.vehicle_type})</span><div class="flex gap-2"><span class="text-emerald-400 text-xs">${c.is_active ? '● ONLINE' : '● OFFLINE'}</span>${c.is_active ? `<button onclick="window.endCourierShift('${docSnap.id}')" class="text-amber-400 text-xs bg-amber-500/20 px-2 py-1 rounded-lg"><i class="fas fa-stop"></i> Завершить смену</button>` : `<button onclick="window.activateCourier('${docSnap.id}')" class="text-green-400 text-xs bg-green-500/20 px-2 py-1 rounded-lg"><i class="fas fa-play"></i> Активировать</button>`}</div></div>`;
+            html += `<div class="bg-slate-800/30 p-2 rounded-xl flex justify-between items-center"><span><i class="fas fa-user-circle text-purple-400"></i> ${userName} (${c.vehicle_type})</span><div class="flex gap-2"><span class="text-emerald-400 text-xs">${c.is_active ? '● НА СМЕНЕ' : '● НЕ В СМЕНЕ'}</span></div></div>`;
         });
         container.innerHTML = html || '<div class="text-center py-4 text-slate-500">Нет курьеров</div>';
     }
-    
-    window.endCourierShift = async (cid) => { await updateDoc(doc(db, "couriers", cid), { is_active: false }); };
-    window.activateCourier = async (cid) => { await updateDoc(doc(db, "couriers", cid), { is_active: true }); };
     
     document.getElementById('newOrderDispatcherBtn').onclick = () => document.getElementById('orderFormModal').classList.remove('hidden');
     document.getElementById('closeOrderModal').onclick = () => document.getElementById('orderFormModal').classList.add('hidden');
@@ -316,8 +320,6 @@
         document.getElementById('orderAddress').value=''; document.getElementById('orderPhone').value=''; document.getElementById('orderWeight').value='';
         document.getElementById('orderTimeStart').value=''; document.getElementById('orderTimeEnd').value='';
     };
-    
-    document.getElementById('addCourierQuickBtn').onclick = async () => { const name = prompt("Имя курьера"); if(name) { const userRef = await addDoc(collection(db, "users"), { name: name, email: name+"@temp.com", role: "курьер", created_at: serverTimestamp() }); await addDoc(collection(db,"couriers"),{ user_id: userRef.id, vehicle_type:"авто", is_active:true, last_lat:0, last_lng:0 }); } };
     
     document.getElementById('runOptimizationBtn').onclick = async () => {
         const newOrdersSnap = await getDocs(query(collection(db,"orders"), where("status","==","новый")));
@@ -339,9 +341,25 @@
         const cSnap = await getDocs(query(collection(db,"couriers"), where("user_id","==",currentUser.user_id)));
         if(cSnap.empty) return;
         courierDocId = cSnap.docs[0].id;
-        await updateDoc(doc(db,"couriers",courierDocId), { is_active: true, gps_updated_at: serverTimestamp() });
+        const courierData = cSnap.docs[0].data();
+        courierIsActive = courierData.is_active || false;
+        updateShiftUI();
         
-        // Слушаем заказы, назначенные этому курьеру
+        // Кнопка выхода на смену / завершения
+        document.getElementById('toggleShiftBtn').onclick = async () => {
+            if(courierIsActive) {
+                await updateDoc(doc(db,"couriers",courierDocId), { is_active: false });
+                courierIsActive = false;
+                alert("Смена завершена");
+            } else {
+                await updateDoc(doc(db,"couriers",courierDocId), { is_active: true });
+                courierIsActive = true;
+                alert("Вы вышли на смену");
+            }
+            updateShiftUI();
+        };
+        
+        // Слушаем заказы, назначенные этому курьеру (только если на смене)
         onSnapshot(query(collection(db,"orders"), where("courier_id","==",courierDocId), orderBy("created_at","desc")), (snap) => {
             const orders = [];
             let completed=0, declined=0, active=0;
@@ -356,6 +374,12 @@
             document.getElementById('courierDeclinedCount').innerText = declined;
             document.getElementById('courierActiveCount').innerText = active;
             document.getElementById('courierTotalCount').innerText = orders.length;
+            
+            if(!courierIsActive) {
+                document.getElementById('courierWaitBlock').classList.remove('hidden');
+                document.getElementById('courierActiveBlock').classList.add('hidden');
+                return;
+            }
             
             // Ищем заказ со статусом 'в работе' (ожидает решения курьера)
             const pending = orders.find(o => o.status === 'в работе');
@@ -385,7 +409,7 @@
                 document.getElementById('orderTimeDisplay').innerHTML = inDelivery.time_window_start ? `<i class="fas fa-clock mr-1"></i> ${formatDateTime(inDelivery.time_window_start)} - ${formatDateTime(inDelivery.time_window_end)}` : '';
                 document.getElementById('orderWeightDisplay').innerHTML = `<i class="fas fa-weight-hanging mr-1"></i> ${inDelivery.weight_kg || 0} кг`;
                 showAddressOnMap(inDelivery.address);
-            } else if(orders.length === 0) {
+            } else if(orders.length === 0 || active === 0) {
                 document.getElementById('courierWaitBlock').classList.remove('hidden');
                 document.getElementById('courierActiveBlock').classList.add('hidden');
                 pendingOrder = null;
@@ -396,6 +420,29 @@
             }
             renderCourierHistory(orders);
         });
+    }
+    
+    function updateShiftUI() {
+        const statusSpan = document.getElementById('shiftStatus');
+        const btn = document.getElementById('toggleShiftBtn');
+        if(courierIsActive) {
+            statusSpan.innerHTML = '✅ На смене';
+            statusSpan.className = 'text-emerald-400 font-bold';
+            btn.innerHTML = '🏁 Завершить смену';
+            btn.classList.remove('bg-emerald-600');
+            btn.classList.add('bg-red-600');
+        } else {
+            statusSpan.innerHTML = '❌ Не в смене';
+            statusSpan.className = 'text-red-400 font-bold';
+            btn.innerHTML = '🚀 Выйти на смену';
+            btn.classList.remove('bg-red-600');
+            btn.classList.add('bg-emerald-600');
+        }
+    }
+    
+    function formatDateTime(dateTimeStr) {
+        if(!dateTimeStr) return '';
+        return new Date(dateTimeStr).toLocaleString('ru-RU', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
     }
     
     function renderCourierHistory(orders) {
@@ -460,8 +507,6 @@
             alert("⚠️ Проблема отправлена диспетчеру");
         }
     };
-    
-    document.getElementById('courierFinishShiftBtn').onclick = async () => { await updateDoc(doc(db,"couriers",courierDocId), { is_active: false }); alert("Смена завершена"); location.reload(); };
 </script>
 </body>
 </html>
