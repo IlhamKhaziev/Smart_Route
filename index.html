@@ -3,51 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SmartRoute | Professional VRP System</title>
+    <title>SmartRoute | VRP System</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
-        * { font-family: 'Inter', sans-serif; }
-        body { background: #0f172a; color: #f8fafc; min-height: 100vh; overflow-x: hidden; }
-        .glass-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); border-radius: 1rem; }
-        .btn-green { background: #10b981; transition: 0.2s; }
-        .btn-green:hover { background: #059669; transform: translateY(-1px); }
-        .map-placeholder { background: linear-gradient(45deg, #1e293b 25%, #334155 50%, #1e293b 75%); background-size: 200% 200%; animation: shimmer 5s infinite linear; }
-        @keyframes shimmer { 0% { background-position: 0% 0%; } 100% { background-position: 200% 200%; } }
+        body { background: #0f172a; color: #f8fafc; font-family: 'Inter', sans-serif; }
+        .glass-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); border-radius: 1rem; }
+        .hidden { display: none !important; }
+        iframe { border-radius: 0.75rem; border: none; width: 100%; height: 100%; }
+        .map-bg { background: #1e293b; display: flex; align-items: center; justify-content: center; color: #475569; }
     </style>
 </head>
 <body>
 
 <div class="max-w-7xl mx-auto px-4 py-6">
-    <header class="flex flex-wrap justify-between items-center gap-4 mb-8 bg-slate-800/50 p-4 rounded-2xl border border-slate-700">
+    <header class="flex justify-between items-center gap-4 mb-8 bg-slate-800/50 p-4 rounded-2xl border border-slate-700">
         <div class="flex items-center gap-3">
-            <div class="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20">
-                <i class="fas fa-route text-white"></i>
-            </div>
-            <h1 class="text-xl font-bold tracking-tight">SmartRoute</h1>
+            <div class="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg"><i class="fas fa-route text-white"></i></div>
+            <h1 class="text-xl font-bold">SmartRoute</h1>
         </div>
         <div class="flex items-center gap-4">
-            <button id="exportBtn" class="px-4 py-2 bg-slate-700 text-sm rounded-xl border border-slate-600 hover:bg-slate-600 transition flex items-center gap-2">
-                <i class="fas fa-file-export text-emerald-400"></i> Экспорт таблиц (Access)
+            <button id="exportBtn" class="hidden px-4 py-2 bg-slate-700 text-sm rounded-xl border border-slate-600 hover:bg-slate-600 transition flex items-center gap-2">
+                <i class="fas fa-file-export text-emerald-400"></i> Экспорт таблиц
             </button>
-            <div id="authArea">
-                <button id="loginBtn" class="px-5 py-2 bg-blue-600 rounded-xl text-sm font-semibold hover:bg-blue-500 transition">Войти через Google</button>
-            </div>
+            <button id="authBtn" class="px-5 py-2 bg-blue-600 rounded-xl text-sm font-semibold hover:bg-blue-500 transition">Войти</button>
         </div>
     </header>
 
     <div id="roleScreen" class="hidden fixed inset-0 z-50 bg-slate-900 flex items-center justify-center p-4">
         <div class="glass-card p-10 max-w-xl w-full text-center">
-            <h2 class="text-3xl font-bold mb-8">Выберите вашу роль</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <button onclick="pickRole('диспетчер')" class="p-8 bg-blue-600/10 border border-blue-500/30 rounded-2xl hover:bg-blue-600/20 transition group">
-                    <i class="fas fa-desktop text-5xl mb-4 text-blue-500"></i>
-                    <div class="text-xl font-bold">Диспетчер</div>
+            <h2 class="text-3xl font-bold mb-8">Ваша роль в системе?</h2>
+            <div class="grid grid-cols-2 gap-6">
+                <button onclick="saveRole('диспетчер')" class="p-6 bg-blue-600/10 border border-blue-500/30 rounded-2xl hover:bg-blue-600/20">
+                    <i class="fas fa-desktop text-4xl mb-3 text-blue-500"></i><br>Диспетчер
                 </button>
-                <button onclick="pickRole('курьер')" class="p-8 bg-emerald-600/10 border border-emerald-500/30 rounded-2xl hover:bg-emerald-600/20 transition group">
-                    <i class="fas fa-motorcycle text-5xl mb-4 text-emerald-500"></i>
-                    <div class="text-xl font-bold">Курьер</div>
+                <button onclick="saveRole('курьер')" class="p-6 bg-emerald-600/10 border border-emerald-500/30 rounded-2xl hover:bg-emerald-600/20">
+                    <i class="fas fa-motorcycle text-4xl mb-3 text-emerald-500"></i><br>Курьер
                 </button>
             </div>
         </div>
@@ -57,98 +48,76 @@
         <div class="lg:col-span-4 space-y-4">
             <div class="glass-card p-5 h-[600px] flex flex-col">
                 <div class="flex justify-between items-center mb-4">
-                    <h3 class="font-bold flex items-center gap-2"><i class="fas fa-boxes text-blue-400"></i> Активные заказы</h3>
-                    <button onclick="toggleModal('orderModal', true)" class="text-xs bg-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-500">+ Заказ</button>
+                    <h3 class="font-bold">Заказы</h3>
+                    <button onclick="toggleModal('orderModal', true)" class="bg-blue-600 px-3 py-1 rounded-lg text-xs">+ Заказ</button>
                 </div>
-                <div id="dispOrdersList" class="space-y-3 overflow-y-auto pr-2 flex-grow"></div>
-                <button id="optimizeBtn" class="w-full mt-4 py-3 btn-green rounded-xl font-bold shadow-lg shadow-emerald-500/20">ОПТИМИЗИРОВАТЬ</button>
+                <div id="dispOrdersList" class="space-y-3 overflow-y-auto flex-grow pr-2"></div>
+                <button id="optimizeBtn" class="w-full mt-4 py-3 bg-emerald-600 rounded-xl font-bold">ОПТИМИЗИРОВАТЬ</button>
             </div>
         </div>
-
         <div class="lg:col-span-8 space-y-6">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="grid grid-cols-2 gap-6">
                 <div class="glass-card p-5">
-                    <h3 class="font-bold mb-4 flex items-center gap-2"><i class="fas fa-users text-purple-400"></i> Курьеры на смене</h3>
-                    <div id="dispCouriersList" class="space-y-3"></div>
+                    <h3 class="font-bold mb-3 text-sm">Курьеры ONLINE</h3>
+                    <div id="dispCouriersList" class="space-y-2"></div>
                 </div>
                 <div class="glass-card p-5">
-                    <h3 class="font-bold mb-4 flex items-center gap-2"><i class="fas fa-chart-line text-emerald-400"></i> Мониторинг</h3>
-                    <div class="space-y-2 text-sm">
-                        <div class="flex justify-between"><span>🟢 Выполнено:</span> <span id="statDone">0</span></div>
-                        <div class="flex justify-between"><span>🟡 В пути:</span> <span id="statWork">0</span></div>
-                        <div class="flex justify-between"><span>🔴 Опоздания:</span> <span class="text-red-400">0</span></div>
+                    <h3 class="font-bold mb-3 text-sm">Мониторинг</h3>
+                    <div id="stats" class="text-sm space-y-1 text-slate-400">
+                        <div>Выполнено: <span id="statDone" class="text-emerald-400">0</span></div>
+                        <div>В работе: <span id="statWork" class="text-blue-400">0</span></div>
                     </div>
                 </div>
             </div>
-            <div class="glass-card h-[350px] map-placeholder relative overflow-hidden flex items-center justify-center border-2 border-slate-700">
-                <i class="fas fa-map-marked-alt text-6xl text-slate-600/50"></i>
-                <div class="absolute top-4 left-4 bg-slate-900/80 px-3 py-1 rounded-lg text-xs border border-slate-700">ИНТЕРАКТИВНАЯ КАРТА (VRP)</div>
+            <div id="dispMap" class="glass-card h-[350px] map-bg overflow-hidden border border-slate-700">
+                 <i class="fas fa-map-marked-alt text-4xl opacity-20"></i>
             </div>
         </div>
     </main>
 
     <main id="courPanel" class="hidden max-w-md mx-auto space-y-6">
-        <div id="courWait" class="glass-card p-8 text-center">
-            <div class="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-slate-700">
-                <i class="fas fa-bell text-3xl text-slate-500 animate-pulse"></i>
-            </div>
+        <div id="courWait" class="glass-card p-10 text-center">
+            <i class="fas fa-bell text-4xl text-slate-600 mb-4 animate-pulse"></i>
             <h2 class="text-xl font-bold">Ожидание маршрута</h2>
-            <p class="text-slate-400 text-sm mt-2">Диспетчер еще не назначил вам заказы</p>
         </div>
 
         <div id="courAcceptBlock" class="hidden glass-card p-6 border-t-4 border-t-amber-500">
-            <h2 class="text-lg font-bold mb-2 text-amber-500">Пришел новый маршрут!</h2>
-            <p id="courTaskCount" class="text-sm text-slate-300 mb-4">Количество заказов: 0</p>
-            <button onclick="acceptRoute()" class="w-full py-4 btn-green rounded-2xl font-bold text-lg">ПРИНЯТЬ МАРШРУТ</button>
+            <h2 class="text-lg font-bold mb-4 text-amber-500">Пришел новый маршрут!</h2>
+            <button onclick="acceptRoute()" class="w-full py-4 bg-emerald-600 rounded-xl font-bold">ПРИНЯТЬ МАРШРУТ</button>
         </div>
 
         <div id="courActive" class="hidden space-y-4">
-            <div class="glass-card h-48 map-placeholder border border-slate-700 overflow-hidden relative">
-                <div class="absolute bottom-2 right-2 bg-blue-600 px-3 py-1 rounded shadow text-xs">GPS ACTIVE</div>
-            </div>
+            <div id="courMap" class="glass-card h-64 overflow-hidden bg-slate-800 border border-slate-700"></div>
             
-            <div id="currentPointCard" class="glass-card p-6 border-l-4 border-l-blue-500">
-                <div class="flex justify-between items-start mb-4">
-                    <div>
-                        <span class="text-[10px] uppercase tracking-widest text-blue-400 font-bold">Текущий адрес</span>
-                        <h2 id="curAddr" class="text-xl font-bold leading-tight">...</h2>
-                    </div>
-                    <button class="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center border border-slate-700"><i class="fas fa-location-arrow text-blue-400"></i></button>
-                </div>
+            <div class="glass-card p-6 border-l-4 border-l-blue-500">
+                <span class="text-[10px] uppercase text-blue-400 font-bold">Текущий адрес</span>
+                <h2 id="curAddr" class="text-xl font-bold mb-4 leading-tight">...</h2>
                 
-                <div id="courButtonsArrival" class="space-y-3">
+                <div id="courButtonsArrival">
                     <button onclick="courierArrived()" class="w-full py-4 bg-blue-600 rounded-xl font-bold">Я ПРИБЫЛ НА МЕСТО</button>
                 </div>
-
                 <div id="courButtonsAction" class="hidden grid grid-cols-2 gap-4">
                     <button onclick="courierComplete(true)" class="py-4 bg-emerald-600 rounded-xl font-bold flex flex-col items-center">
-                        <i class="fas fa-check-circle mb-1"></i> Выполнен
+                        <i class="fas fa-check-circle mb-1"></i> Выполнено
                     </button>
-                    <button onclick="openProblem()" class="py-4 bg-red-600/20 text-red-500 border border-red-500/40 rounded-xl font-bold flex flex-col items-center">
+                    <button onclick="toggleModal('problemModal', true)" class="py-4 bg-red-600/20 text-red-500 border border-red-500/40 rounded-xl font-bold flex flex-col items-center">
                         <i class="fas fa-exclamation-triangle mb-1"></i> Проблема
                     </button>
                 </div>
             </div>
-
-            <button id="finishShiftBtn" class="hidden w-full py-4 bg-slate-800 border border-slate-700 rounded-xl font-bold text-slate-400 hover:text-white transition">ЗАВЕРШИТЬ СМЕНУ</button>
         </div>
     </main>
 </div>
 
-<div id="orderModal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-sm hidden z-[100] flex items-center justify-center p-4">
-    <div class="glass-card p-6 w-full max-w-md shadow-2xl">
+<div id="orderModal" class="fixed inset-0 bg-slate-950/90 hidden z-[100] flex items-center justify-center p-4">
+    <div class="glass-card p-6 w-full max-w-md">
         <h3 class="text-xl font-bold mb-6">Новый заказ</h3>
         <div class="space-y-4">
-            <input id="orderAddr" type="text" placeholder="Адрес доставки (Автодополнение...)" class="w-full bg-slate-800 border border-slate-700 p-3 rounded-xl focus:border-blue-500 outline-none text-sm">
-            <div class="grid grid-cols-2 gap-4">
-                <input id="orderTimeStart" type="time" class="bg-slate-800 border border-slate-700 p-3 rounded-xl text-sm">
-                <input id="orderTimeEnd" type="time" class="bg-slate-800 border border-slate-700 p-3 rounded-xl text-sm">
-            </div>
-            <input id="orderWeight" type="number" placeholder="Вес (кг)" class="w-full bg-slate-800 border border-slate-700 p-3 rounded-xl text-sm">
-            <input id="orderPhone" type="tel" placeholder="Контактный телефон" class="w-full bg-slate-800 border border-slate-700 p-3 rounded-xl text-sm">
-            <div class="flex gap-3 mt-4">
-                <button onclick="saveOrder()" class="flex-1 py-3 btn-green rounded-xl font-bold">Сохранить</button>
-                <button onclick="toggleModal('orderModal', false)" class="flex-1 py-3 bg-slate-700 rounded-xl font-bold">Отмена</button>
+            <input id="orderAddr" type="text" placeholder="Адрес доставки" class="w-full bg-slate-800 border border-slate-700 p-3 rounded-xl outline-none focus:border-blue-500">
+            <input id="orderPhone" type="tel" placeholder="Телефон" class="w-full bg-slate-800 border border-slate-700 p-3 rounded-xl">
+            <div class="flex gap-3">
+                <button onclick="saveOrder()" class="flex-1 py-3 bg-emerald-600 rounded-xl font-bold">Создать</button>
+                <button onclick="toggleModal('orderModal', false)" class="flex-1 py-3 bg-slate-700 rounded-xl">Отмена</button>
             </div>
         </div>
     </div>
@@ -156,55 +125,55 @@
 
 <div id="problemModal" class="fixed inset-0 bg-slate-950/90 hidden z-[100] flex items-center justify-center p-4">
     <div class="glass-card p-6 w-full max-w-sm">
-        <h3 class="text-lg font-bold mb-4">Причина проблемы</h3>
-        <textarea id="problemNote" placeholder="Например: Не открывают дверь..." class="w-full h-32 bg-slate-800 border border-slate-700 p-3 rounded-xl text-sm mb-4 outline-none focus:border-red-500"></textarea>
+        <h3 class="text-lg font-bold mb-4 text-red-400">Причина проблемы</h3>
+        <textarea id="problemNote" placeholder="Почему не доставлено?" class="w-full h-32 bg-slate-800 border border-slate-700 p-3 rounded-xl mb-4 outline-none"></textarea>
         <div class="flex gap-2">
-            <button onclick="courierComplete(false)" class="flex-1 py-3 bg-red-600 rounded-xl font-bold">Отправить диспетчеру</button>
-            <button onclick="toggleModal('problemModal', false)" class="flex-1 py-3 bg-slate-700 rounded-xl">Отмена</button>
+            <button onclick="courierComplete(false)" class="flex-1 py-3 bg-red-600 rounded-xl font-bold">Отправить</button>
+            <button onclick="toggleModal('problemModal', false)" class="flex-1 py-3 bg-slate-700 rounded-xl text-sm">Назад</button>
         </div>
     </div>
 </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDocs, query, where, updateDoc, doc, serverTimestamp, onSnapshot, orderBy } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+    import { getFirestore, doc, setDoc, getDoc, collection, addDoc, onSnapshot, query, where, updateDoc, serverTimestamp, getDocs, orderBy } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
     import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
-    const firebaseConfig = {
-        apiKey: "AIzaSyCHpQu8po8ww50PHN6BdfMrUVtAXBnmwzo",
-        authDomain: "smart-route-8ff6a.firebaseapp.com",
-        projectId: "smart-route-8ff6a",
-        storageBucket: "smart-route-8ff6a.firebasestorage.app",
-        messagingSenderId: "610410290985",
-        appId: "1:610410290985:web:e59962bd9b42d935bda138"
-    };
+   const firebaseConfig = {
+  apiKey: "AIzaSyCHpQu8po8ww50PHN6BdfMrUVtAXBnmwzo",
+  authDomain: "smart-route-8ff6a.firebaseapp.com",
+  projectId: "smart-route-8ff6a",
+  storageBucket: "smart-route-8ff6a.firebasestorage.app",
+  messagingSenderId: "610410290985",
+  appId: "1:610410290985:web:e59962bd9b42d935bda138",
+  measurementId: "G-4CZX8SNDBD"
+};
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const auth = getAuth(app);
     const provider = new GoogleAuthProvider();
 
-    let userState = { uid: null, role: null, name: null, email: null };
+    let userState = { uid: null, role: null, name: null };
     let activeTasks = [];
 
-    // --- АВТОРИЗАЦИЯ (Сценарий 1) ---
-    const loginBtn = document.getElementById('loginBtn');
-    loginBtn.onclick = () => userState.uid ? signOut(auth) : signInWithPopup(auth, provider);
+    // --- СИСТЕМА ВХОДА (Без дублей) ---
+    const authBtn = document.getElementById('authBtn');
+    authBtn.onclick = () => userState.uid ? signOut(auth) : signInWithPopup(auth, provider);
 
     onAuthStateChanged(auth, async (user) => {
         if (user) {
             userState.uid = user.uid;
             userState.name = user.displayName;
-            userState.email = user.email;
-            loginBtn.innerText = `Выйти (${user.displayName.split(' ')[0]})`;
+            authBtn.innerText = `Выйти (${user.displayName.split(' ')[0]})`;
             
-            const q = query(collection(db, "users"), where("uid", "==", user.uid));
-            const snap = await getDocs(q);
-            
-            if (snap.empty) {
+            const userRef = doc(db, "users", user.uid);
+            const userSnap = await getDoc(userRef);
+
+            if (!userSnap.exists()) {
                 document.getElementById('roleScreen').classList.remove('hidden');
             } else {
-                userState.role = snap.docs[0].data().role;
+                userState.role = userSnap.data().role;
                 initDashboard();
             }
         } else {
@@ -212,20 +181,18 @@
         }
     });
 
-    window.pickRole = async (role) => {
-        await addDoc(collection(db, "users"), {
+    window.saveRole = async (role) => {
+        await setDoc(doc(db, "users", userState.uid), {
             uid: userState.uid,
             name: userState.name,
-            email: userState.email,
             role: role,
-            created_at: serverTimestamp()
+            createdAt: serverTimestamp()
         });
         if (role === 'курьер') {
-            await addDoc(collection(db, "couriers"), {
+            await setDoc(doc(db, "couriers", userState.uid), {
                 uid: userState.uid,
                 name: userState.name,
-                is_active: true,
-                last_lat: 0, last_lng: 0
+                is_active: true
             });
         }
         location.reload();
@@ -235,32 +202,35 @@
         document.getElementById('roleScreen').classList.add('hidden');
         if (userState.role === 'диспетчер') {
             document.getElementById('dispPanel').classList.remove('hidden');
-            initDispatcherLogic();
+            document.getElementById('exportBtn').classList.remove('hidden');
+            initDispatcher();
         } else {
             document.getElementById('courPanel').classList.remove('hidden');
-            initCourierLogic();
+            initCourier();
         }
     }
 
-    // --- ДИСПЕТЧЕР (Сценарий 2) ---
-    function initDispatcherLogic() {
-        onSnapshot(query(collection(db, "orders"), orderBy("created_at", "desc")), (snap) => {
+    // --- КАРТЫ ---
+    function updateMap(containerId, address) {
+        const container = document.getElementById(containerId);
+        if (!address) return;
+        const q = encodeURIComponent(address);
+        container.innerHTML = `<iframe src="https://maps.google.com/maps?q=${q}&t=&z=15&ie=UTF8&iwloc=&output=embed"></iframe>`;
+    }
+
+    // --- ДИСПЕТЧЕР ---
+    function initDispatcher() {
+        onSnapshot(query(collection(db, "orders"), orderBy("createdAt", "desc")), (snap) => {
             const list = document.getElementById('dispOrdersList');
             let done = 0, work = 0;
             list.innerHTML = '';
-            snap.forEach(docSnap => {
-                const d = docSnap.data();
-                if (d.status === 'выполнен') done++;
-                if (d.status === 'в работе') work++;
-                list.innerHTML += `
-                    <div class="p-3 bg-slate-800/40 border border-slate-700 rounded-xl text-xs">
-                        <div class="flex justify-between font-bold mb-1">
-                            <span>#${docSnap.id.slice(-4)}</span>
-                            <span class="${d.status === 'выполнен' ? 'text-emerald-400' : 'text-blue-400'}">${d.status.toUpperCase()}</span>
-                        </div>
-                        <div class="text-slate-300"><i class="fas fa-map-marker-alt mr-1"></i> ${d.address}</div>
-                    </div>
-                `;
+            snap.forEach(d => {
+                const data = d.data();
+                if (data.status === 'выполнен') done++;
+                if (data.status === 'в работе') work++;
+                list.innerHTML += `<div class="p-3 bg-slate-800/40 border border-slate-700 rounded-xl text-xs flex justify-between">
+                    <span>${data.address}</span><span class="text-blue-400 uppercase">${data.status}</span>
+                </div>`;
             });
             document.getElementById('statDone').innerText = done;
             document.getElementById('statWork').innerText = work;
@@ -269,66 +239,53 @@
         onSnapshot(collection(db, "couriers"), (snap) => {
             const list = document.getElementById('dispCouriersList');
             list.innerHTML = '';
-            snap.forEach(docSnap => {
-                const c = docSnap.data();
-                list.innerHTML += `
-                    <div class="flex items-center justify-between p-2 bg-slate-800/20 border border-slate-700 rounded-lg text-sm">
-                        <span><i class="fas fa-user-circle mr-2 text-purple-400"></i> ${c.name}</span>
-                        <span class="text-[10px] text-emerald-400">● ONLINE</span>
-                    </div>
-                `;
+            snap.forEach(d => {
+                list.innerHTML += `<div class="text-xs bg-slate-800 p-2 rounded-lg border border-slate-700">🟢 ${d.data().name}</div>`;
             });
         });
+        updateMap('dispMap', 'Almaty, Kazakhstan'); // Дефолтная карта диспетчера
     }
 
     window.saveOrder = async () => {
         const address = document.getElementById('orderAddr').value;
-        const phone = document.getElementById('orderPhone').value;
-        if (!address || !phone) return alert("Адрес и Телефон обязательны!");
-
+        if (!address) return alert("Введите адрес!");
         await addDoc(collection(db, "orders"), {
             address,
-            phone,
-            weight_kg: document.getElementById('orderWeight').value || 0,
-            time_window_start: document.getElementById('orderTimeStart').value,
-            time_window_end: document.getElementById('orderTimeEnd').value,
+            phone: document.getElementById('orderPhone').value,
             status: 'новый',
-            created_at: serverTimestamp()
+            createdAt: serverTimestamp()
         });
         toggleModal('orderModal', false);
     };
 
     document.getElementById('optimizeBtn').onclick = async () => {
-        const ordSnap = await getDocs(query(collection(db, "orders"), where("status", "==", "новый")));
-        const courSnap = await getDocs(query(collection(db, "couriers"), where("is_active", "==", true)));
+        const ords = await getDocs(query(collection(db, "orders"), where("status", "==", "новый")));
+        const cours = await getDocs(query(collection(db, "couriers"), where("is_active", "==", true)));
+        if (ords.empty || cours.empty) return alert("Нет заказов или курьеров!");
         
-        if (ordSnap.empty || courSnap.empty) return alert("Нет новых заказов или свободных курьеров!");
-
-        const courIds = courSnap.docs.map(d => d.id);
-        let idx = 0;
-        for (const oDoc of ordSnap.docs) {
-            await updateDoc(doc(db, "orders", oDoc.id), {
+        const courIds = cours.docs.map(d => d.id);
+        let i = 0;
+        for (const o of ords.docs) {
+            await updateDoc(doc(db, "orders", o.id), {
                 status: 'в работе',
-                courier_id: courIds[idx % courIds.length]
+                courier_id: courIds[i % courIds.length]
             });
-            idx++;
+            i++;
         }
-        alert("Оптимизация завершена. Маршруты отправлены курьерам!");
+        alert("Оптимизировано!");
     };
 
-    // --- КУРЬЕР (Сценарий 3) ---
-    async function initCourierLogic() {
-        const cSnap = await getDocs(query(collection(db, "couriers"), where("uid", "==", userState.uid)));
-        if (cSnap.empty) return;
-        const courierDocId = cSnap.docs[0].id;
-
-        onSnapshot(query(collection(db, "orders"), where("courier_id", "==", courierDocId)), (snap) => {
+    // --- КУРЬЕР ---
+    function initCourier() {
+        onSnapshot(query(collection(db, "orders"), where("courier_id", "==", userState.uid)), (snap) => {
             activeTasks = snap.docs.filter(d => d.data().status === 'в работе').map(d => ({id: d.id, ...d.data()}));
             
             if (activeTasks.length > 0) {
                 document.getElementById('courWait').classList.add('hidden');
                 document.getElementById('courAcceptBlock').classList.remove('hidden');
-                document.getElementById('courTaskCount').innerText = `Количество заказов: ${activeTasks.length}`;
+            } else {
+                document.getElementById('courWait').classList.remove('hidden');
+                document.getElementById('courActive').classList.add('hidden');
             }
         });
     }
@@ -336,19 +293,16 @@
     window.acceptRoute = () => {
         document.getElementById('courAcceptBlock').classList.add('hidden');
         document.getElementById('courActive').classList.remove('hidden');
-        renderCurrentTask();
+        renderTask();
     };
 
-    function renderCurrentTask() {
-        if (activeTasks.length === 0) {
-            document.getElementById('currentPointCard').innerHTML = "<div class='text-center py-4 font-bold text-emerald-400'>МАРШРУТ ЗАВЕРШЕН!</div>";
-            document.getElementById('finishShiftBtn').classList.remove('hidden');
-            return;
-        }
+    function renderTask() {
+        if (activeTasks.length === 0) return location.reload();
         const task = activeTasks[0];
         document.getElementById('curAddr').innerText = task.address;
         document.getElementById('courButtonsArrival').classList.remove('hidden');
         document.getElementById('courButtonsAction').classList.add('hidden');
+        updateMap('courMap', task.address); // КАРТА КУРЬЕРА ОБНОВЛЯЕТСЯ
     }
 
     window.courierArrived = () => {
@@ -356,56 +310,34 @@
         document.getElementById('courButtonsAction').classList.remove('hidden');
     };
 
-    window.openProblem = () => toggleModal('problemModal', true);
-
     window.courierComplete = async (isSuccess) => {
         const task = activeTasks[0];
-        const note = document.getElementById('problemNote').value;
-        
         await updateDoc(doc(db, "orders", task.id), {
             status: isSuccess ? 'выполнен' : 'проблема',
-            problem_note: isSuccess ? "" : note
+            note: document.getElementById('problemNote').value
         });
-
         toggleModal('problemModal', false);
         activeTasks.shift();
-        renderCurrentTask();
+        renderTask();
     };
 
-    // --- ЭКСПОРТ (Access / SQL) ---
+    // --- ЭКСПОРТ (CSV для Access) ---
     document.getElementById('exportBtn').onclick = async () => {
         const tables = ['users', 'couriers', 'orders'];
-        
         for (const table of tables) {
             const snap = await getDocs(collection(db, table));
-            let csv = "";
-            let headers = [];
-
+            let csv = "ID," + (snap.empty ? "" : Object.keys(snap.docs[0].data()).join(",")) + "\n";
             snap.forEach(d => {
-                const data = d.data();
-                if (headers.length === 0) {
-                    headers = Object.keys(data);
-                    csv += "ID," + headers.join(",") + "\n";
-                }
-                const values = headers.map(h => {
-                    let val = data[h];
-                    if (val && val.toDate) val = val.toDate().toLocaleString();
-                    return `"${String(val).replace(/"/g, '""')}"`;
-                });
-                csv += d.id + "," + values.join(",") + "\n";
+                const vals = Object.values(d.data()).map(v => `"${v}"`);
+                csv += d.id + "," + vals.join(",") + "\n";
             });
-
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `Table_${table.toUpperCase()}.csv`;
-            a.click();
+            const link = document.createElement('a');
+            link.href = 'data:text/csv;charset=utf-8,' + encodeURI(csv);
+            link.download = `${table}.csv`;
+            link.click();
         }
-        alert("Таблицы скачаны отдельно. Теперь их можно импортировать в Microsoft Access!");
     };
 
-    // Утилиты
     window.toggleModal = (id, show) => document.getElementById(id).classList.toggle('hidden', !show);
 </script>
 </body>
