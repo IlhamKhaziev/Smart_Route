@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>SmartRoute | VRP Логистика + Firebase</title>
+    <title>SmartRoute | VRP Логистика</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -19,6 +19,8 @@
         .btn-danger:hover { background: #b91c1c; }
         .btn-success { background: #10b981; }
         .btn-success:hover { background: #059669; }
+        .btn-warning { background: #f59e0b; }
+        .btn-warning:hover { background: #d97706; }
         .status-badge { padding: 4px 12px; border-radius: 40px; font-size: 11px; font-weight: 600; width: fit-content; }
         .status-new { background: #f59e0b20; color: #fbbf24; border: 1px solid #f59e0b40; }
         .status-work { background: #3b82f620; color: #60a5fa; border: 1px solid #3b82f640; }
@@ -41,15 +43,10 @@
             <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center"><i class="fas fa-route text-white text-lg"></i></div>
             <h1 class="text-2xl font-extrabold bg-gradient-to-r from-blue-300 to-purple-300 bg-clip-text text-transparent">SmartRoute</h1>
         </div>
-        <div class="flex gap-3 items-center">
-            <button id="exportAccessBtn" class="hidden-disp-only px-4 py-2 bg-emerald-600/80 hover:bg-emerald-500 rounded-xl text-sm font-semibold transition flex items-center gap-2 shadow">
-                <i class="fas fa-file-excel"></i> Экспорт в Access (CSV)
+        <div id="authContainer">
+            <button id="googleLoginBtn" class="px-5 py-2 bg-slate-700 hover:bg-slate-600 rounded-xl text-sm font-medium transition flex items-center gap-2 border border-slate-600">
+                <i class="fab fa-google"></i> Войти
             </button>
-            <div id="authContainer">
-                <button id="googleLoginBtn" class="px-5 py-2 bg-slate-700 hover:bg-slate-600 rounded-xl text-sm font-medium transition flex items-center gap-2 border border-slate-600">
-                    <i class="fab fa-google"></i> Войти
-                </button>
-            </div>
         </div>
     </div>
 
@@ -106,26 +103,54 @@
     </div>
 
     <!-- Панель курьера -->
-    <div id="courierPanel" class="hidden max-w-4xl mx-auto space-y-6">
-        <div id="courierWaitBlock" class="glass rounded-2xl p-8 text-center">
-            <i class="fas fa-hourglass-half text-4xl text-slate-500 mb-3"></i>
-            <h3 class="text-xl font-bold">Ожидание маршрута</h3>
-            <p class="text-slate-400">Диспетчер назначит заказы</p>
+    <div id="courierPanel" class="hidden max-w-5xl mx-auto space-y-6">
+        <!-- Статус смены -->
+        <div id="shiftControl" class="glass rounded-2xl p-4 flex justify-between items-center flex-wrap gap-3">
+            <span class="font-bold"><i class="fas fa-briefcase mr-2"></i>Статус смены:</span>
+            <span id="shiftStatus" class="text-red-400 font-bold">Не в смене</span>
+            <button id="toggleShiftBtn" class="px-6 py-2 bg-emerald-600 rounded-xl font-bold text-sm hover:bg-emerald-500 transition">🚀 Выйти на смену</button>
         </div>
+
+        <!-- Блок ожидания -->
+        <div id="courierWaitBlock" class="glass rounded-2xl p-8 text-center hidden">
+            <i class="fas fa-hourglass-half text-4xl text-slate-500 mb-3"></i>
+            <h3 class="text-xl font-bold">Ожидание заказов</h3>
+            <p class="text-slate-400">Когда диспетчер назначит заказы, они появятся здесь</p>
+        </div>
+
+        <!-- Активный блок -->
         <div id="courierActiveBlock" class="hidden space-y-5">
-            <div class="glass rounded-2xl p-5 flex justify-between items-center flex-wrap gap-3">
-                <div><i class="fas fa-flag-checkered text-emerald-400"></i> <span class="text-sm">Доставлено:</span> <span id="courierCompletedCount" class="text-2xl font-bold text-emerald-400 ml-2">0</span></div>
-                <div><i class="fas fa-truck-fast"></i> <span class="text-sm ml-1">Активных:</span> <span id="activeTasksCount" class="font-bold text-blue-400 ml-1">0</span></div>
-                <div><i class="fas fa-clock"></i> <span class="text-sm ml-1">В работе:</span> <span id="inProgressCount" class="font-bold text-amber-400 ml-1">0</span></div>
+            <!-- Статистика курьера -->
+            <div class="glass rounded-2xl p-5 grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                <div><div class="text-2xl font-bold text-emerald-400" id="courierCompletedCount">0</div><div class="text-xs text-slate-400">✅ Выполнено</div></div>
+                <div><div class="text-2xl font-bold text-red-400" id="courierDeclinedCount">0</div><div class="text-xs text-slate-400">❌ Отклонено</div></div>
+                <div><div class="text-2xl font-bold text-blue-400" id="courierActiveCount">0</div><div class="text-xs text-slate-400">📦 В работе</div></div>
+                <div><div class="text-2xl font-bold text-amber-400" id="courierTotalCount">0</div><div class="text-xs text-slate-400">📊 Всего</div></div>
             </div>
+
+            <!-- Карта -->
             <div class="glass rounded-2xl p-4"><div id="courierMap" class="map-container" style="height: 260px;"></div></div>
+
+            <!-- Карточка текущего заказа -->
             <div id="currentTaskCard" class="glass rounded-2xl p-6 border-l-8 border-l-blue-500">
-                <div class="text-xs uppercase text-blue-400 font-bold">Текущий адрес</div>
-                <h2 id="currentAddressDisplay" class="text-xl font-bold mb-4 break-words">—</h2>
-                <div id="arrivalButtons" class="space-y-3"><button id="arrivedBtn" class="w-full py-4 bg-blue-600 rounded-xl font-bold text-lg">📍 Я ПРИБЫЛ</button></div>
+                <div class="text-xs uppercase text-blue-400 font-bold">Новый заказ</div>
+                <h2 id="currentAddressDisplay" class="text-xl font-bold mb-2 break-words">—</h2>
+                <div id="orderTimeDisplay" class="text-sm text-slate-400 mb-2"></div>
+                <div id="orderWeightDisplay" class="text-sm text-slate-400 mb-4"></div>
+                <div id="acceptDeclineButtons" class="flex gap-4">
+                    <button id="acceptOrderBtn" class="flex-1 py-4 bg-emerald-600 rounded-xl font-bold text-lg"><i class="fas fa-check-circle mr-2"></i> ПРИНЯТЬ</button>
+                    <button id="declineOrderBtn" class="flex-1 py-4 bg-red-600/80 rounded-xl font-bold text-lg"><i class="fas fa-times-circle mr-2"></i> ОТКЛОНИТЬ</button>
+                </div>
+                <div id="arrivalButtons" class="hidden space-y-3"><button id="arrivedBtn" class="w-full py-4 bg-blue-600 rounded-xl font-bold text-lg">📍 Я ПРИБЫЛ НА МЕСТО</button></div>
                 <div id="actionButtons" class="hidden grid grid-cols-2 gap-4"><button id="completeDeliveryBtn" class="py-4 bg-emerald-600 rounded-xl font-bold"><i class="fas fa-check-circle mr-1"></i> Выполнен</button><button id="problemDeliveryBtn" class="py-4 bg-red-600/30 border border-red-500 rounded-xl font-bold"><i class="fas fa-exclamation-triangle mr-1"></i> Проблема</button></div>
             </div>
-            <div class="glass rounded-2xl p-5"><h3 class="font-bold mb-3"><i class="fas fa-history"></i> История заказов</h3><div id="courierHistoryList" class="max-h-48 overflow-y-auto scroll-custom space-y-2"></div></div>
+
+            <!-- История заказов курьера -->
+            <div class="glass rounded-2xl p-5">
+                <h3 class="font-bold mb-3"><i class="fas fa-history text-blue-400 mr-2"></i> История заказов</h3>
+                <div id="courierHistoryList" class="max-h-48 overflow-y-auto scroll-custom space-y-2"></div>
+            </div>
+
             <button id="courierFinishShiftBtn" class="hidden w-full py-4 bg-slate-800 border border-slate-700 rounded-xl font-bold hover:bg-slate-700">🏁 Завершить смену</button>
         </div>
     </div>
@@ -137,18 +162,17 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDocs, query, where, updateDoc, doc, serverTimestamp, onSnapshot, deleteDoc, writeBatch, getDoc, Timestamp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, getDocs, query, where, updateDoc, doc, serverTimestamp, onSnapshot, deleteDoc, writeBatch, getDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
     import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
-   const firebaseConfig = {
-  apiKey: "AIzaSyCHpQu8po8ww50PHN6BdfMrUVtAXBnmwzo",
-  authDomain: "smart-route-8ff6a.firebaseapp.com",
-  projectId: "smart-route-8ff6a",
-  storageBucket: "smart-route-8ff6a.firebasestorage.app",
-  messagingSenderId: "610410290985",
-  appId: "1:610410290985:web:e59962bd9b42d935bda138",
-  measurementId: "G-4CZX8SNDBD"
-};
+    const firebaseConfig = {
+        apiKey: "AIzaSyCHpQu8po8ww50PHN6BdfMrUVtAXBnmwzo",
+        authDomain: "smart-route-8ff6a.firebaseapp.com",
+        projectId: "smart-route-8ff6a",
+        storageBucket: "smart-route-8ff6a.firebasestorage.app",
+        messagingSenderId: "610410290985",
+        appId: "1:610410290985:web:e59962bd9b42d935bda138"
+    };
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const auth = getAuth(app);
@@ -156,20 +180,30 @@
 
     let currentUser = { uid: null, email: null, name: null, role: null, user_id: null };
     let courierDocId = null;
-    let currentTasks = [];
-    let currentTaskIndex = 0;
+    let courierIsActive = false;
+    let pendingOrder = null;
+    let currentDeliveryOrder = null;
     let mapInstance = null;
 
-    // Геокодинг
     async function geocodeAddress(address) {
         try { const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`); const data = await res.json(); if(data.length) return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) }; } catch(e) {}
         return { lat: 55.751244, lng: 37.618423 };
     }
     async function showAddressOnMap(address) {
-        if(!mapInstance) { mapInstance = L.map('courierMap').setView([55.751244, 37.618423], 13); L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { attribution: '© OSM' }).addTo(mapInstance); }
-        const coords = await geocodeAddress(address);
-        mapInstance.setView([coords.lat, coords.lng], 15);
-        L.marker([coords.lat, coords.lng]).addTo(mapInstance).bindPopup(address).openPopup();
+        if(!mapInstance && document.getElementById('courierMap')) { 
+            mapInstance = L.map('courierMap').setView([55.751244, 37.618423], 13); 
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { attribution: '© OSM' }).addTo(mapInstance); 
+        }
+        if(mapInstance) {
+            const coords = await geocodeAddress(address);
+            mapInstance.setView([coords.lat, coords.lng], 15);
+            L.marker([coords.lat, coords.lng]).addTo(mapInstance).bindPopup(address).openPopup();
+        }
+    }
+
+    function formatDateTime(dateTimeStr) {
+        if(!dateTimeStr) return '';
+        return new Date(dateTimeStr).toLocaleString('ru-RU', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
     }
 
     // Авторизация
@@ -195,7 +229,7 @@
     document.getElementById('chooseCourier').onclick = () => pickRole('курьер');
     document.getElementById('saveVehicleBtn').onclick = async () => {
         const vehicle = document.getElementById('vehicleSelect').value;
-        await addDoc(collection(db, "couriers"), { user_id: currentUser.user_id, vehicle_type: vehicle, is_active: true, last_lat: 0, last_lng: 0, gps_updated_at: serverTimestamp() });
+        await addDoc(collection(db, "couriers"), { user_id: currentUser.user_id, vehicle_type: vehicle, is_active: false, last_lat: 0, last_lng: 0, gps_updated_at: serverTimestamp() });
         document.getElementById('courierVehicleModal').classList.add('hidden');
         currentUser.role = 'курьер';
         initUI();
@@ -205,12 +239,10 @@
         if(currentUser.role === 'диспетчер') {
             document.getElementById('dispatcherPanel').classList.remove('hidden');
             document.getElementById('courierPanel').classList.add('hidden');
-            document.querySelectorAll('.hidden-disp-only').forEach(el => el.style.display = 'flex');
             initDispatcher();
         } else {
             document.getElementById('dispatcherPanel').classList.add('hidden');
             document.getElementById('courierPanel').classList.remove('hidden');
-            document.querySelectorAll('.hidden-disp-only').forEach(el => el.style.display = 'none');
             initCourier();
         }
     }
@@ -219,23 +251,14 @@
     async function initDispatcher() {
         onSnapshot(collection(db, "orders"), (snap) => { let total=0, completed=0; snap.forEach(d => { total++; if(d.data().status==='выполнен') completed++; }); document.getElementById('statTotalOrders').innerText = total; document.getElementById('statCompletedOrders').innerText = completed; renderOrdersList(snap); });
         onSnapshot(collection(db, "couriers"), async (snap) => { let active=0; snap.forEach(d => { if(d.data().is_active===true) active++; }); document.getElementById('statActiveCouriers').innerText = active; renderCouriersList(snap); });
-        // Создаём отчёт при загрузке
-        const today = new Date().toISOString().split('T')[0];
-        const reportQuery = query(collection(db, "reports"), where("date", "==", today));
-        const existing = await getDocs(reportQuery);
-        if(existing.empty) {
-            const ordersSnap = await getDocs(collection(db, "orders"));
-            const total = ordersSnap.size;
-            const completed = ordersSnap.docs.filter(d => d.data().status === 'выполнен').length;
-            await addDoc(collection(db, "reports"), { date: today, total_orders: total, avg_delivery_time_min: 0, fuel_saved_percent: 15, created_at: serverTimestamp() });
-        }
     }
     function renderOrdersList(snapshot) {
         const container = document.getElementById('dispatcherOrdersList');
         let html = '';
         snapshot.forEach(docSnap => {
             const o = docSnap.data();
-            html += `<div class="bg-slate-800/40 p-3 rounded-xl border border-slate-700"><div class="flex justify-between items-start"><div><div class="font-mono text-xs">#${docSnap.id.slice(-5)}</div><div class="text-sm font-medium mt-1">${o.address}</div><div class="text-xs text-slate-400 mt-1">📞 ${o.phone} | ⚖️ ${o.weight_kg || 0} кг</div></div><div class="flex flex-col items-end gap-2"><span class="status-badge ${o.status==='новый'?'status-new':(o.status==='в работе'?'status-work':(o.status==='выполнен'?'status-done':'status-problem'))}">${o.status}</span><button onclick="window.deleteOrder('${docSnap.id}')" class="text-red-400 hover:text-red-300 text-xs bg-red-500/20 px-2 py-1 rounded-lg"><i class="fas fa-trash-alt"></i> Удалить</button></div></div></div>`;
+            const timeInfo = o.time_window_start ? `🕐 ${formatDateTime(o.time_window_start)} - ${formatDateTime(o.time_window_end)}` : '';
+            html += `<div class="bg-slate-800/40 p-3 rounded-xl border border-slate-700"><div class="flex justify-between items-start"><div><div class="font-mono text-xs">#${docSnap.id.slice(-5)}</div><div class="text-sm font-medium mt-1">${o.address}</div><div class="text-xs text-slate-400 mt-1">📞 ${o.phone} | ⚖️ ${o.weight_kg || 0} кг | ${timeInfo}</div></div><div class="flex flex-col items-end gap-2"><span class="status-badge ${o.status==='новый'?'status-new':(o.status==='в работе'?'status-work':(o.status==='выполнен'?'status-done':'status-problem'))}">${o.status}</span><button onclick="window.deleteOrder('${docSnap.id}')" class="text-red-400 hover:text-red-300 text-xs bg-red-500/20 px-2 py-1 rounded-lg"><i class="fas fa-trash-alt"></i> Удалить</button></div></div></div>`;
         });
         container.innerHTML = html || '<div class="text-center py-8 text-slate-500">Нет заказов</div>';
     }
@@ -247,21 +270,26 @@
             const c = docSnap.data();
             const userSnap = await getDoc(doc(db, "users", c.user_id));
             const userName = userSnap.exists() ? userSnap.data().name : 'Курьер';
-            html += `<div class="bg-slate-800/30 p-2 rounded-xl flex justify-between items-center"><span><i class="fas fa-user-circle text-purple-400"></i> ${userName} (${c.vehicle_type})</span><div class="flex gap-2"><span class="text-emerald-400 text-xs">${c.is_active ? '● ONLINE' : '● OFFLINE'}</span>${c.is_active ? `<button onclick="window.endCourierShift('${docSnap.id}')" class="text-amber-400 text-xs bg-amber-500/20 px-2 py-1 rounded-lg"><i class="fas fa-stop"></i> Завершить смену</button>` : `<button onclick="window.activateCourier('${docSnap.id}')" class="text-green-400 text-xs bg-green-500/20 px-2 py-1 rounded-lg"><i class="fas fa-play"></i> Активировать</button>`}</div></div>`;
+            html += `<div class="bg-slate-800/30 p-2 rounded-xl flex justify-between items-center"><span><i class="fas fa-user-circle text-purple-400"></i> ${userName} (${c.vehicle_type})</span><div class="flex gap-2"><span class="text-emerald-400 text-xs">${c.is_active ? '● НА СМЕНЕ' : '● НЕ В СМЕНЕ'}</span></div></div>`;
         });
         container.innerHTML = html || '<div class="text-center py-4 text-slate-500">Нет курьеров</div>';
     }
-    window.endCourierShift = async (cid) => { await updateDoc(doc(db, "couriers", cid), { is_active: false }); };
-    window.activateCourier = async (cid) => { await updateDoc(doc(db, "couriers", cid), { is_active: true }); };
     document.getElementById('newOrderDispatcherBtn').onclick = () => document.getElementById('orderFormModal').classList.remove('hidden');
     document.getElementById('closeOrderModal').onclick = () => document.getElementById('orderFormModal').classList.add('hidden');
     document.getElementById('saveOrderFinalBtn').onclick = async () => {
         const addr = document.getElementById('orderAddress').value, phone = document.getElementById('orderPhone').value;
         if(!addr || !phone) return alert("Заполните адрес и телефон");
         const coords = await geocodeAddress(addr);
-        await addDoc(collection(db, "orders"), { address: addr, lat: coords.lat, lng: coords.lng, phone: phone, weight_kg: parseFloat(document.getElementById('orderWeight').value)||0, time_window_start: document.getElementById('orderTimeStart').value, time_window_end: document.getElementById('orderTimeEnd').value, status: 'новый', created_at: serverTimestamp() });
+        await addDoc(collection(db, "orders"), { 
+            address: addr, lat: coords.lat, lng: coords.lng, phone: phone, 
+            weight_kg: parseFloat(document.getElementById('orderWeight').value)||0, 
+            time_window_start: document.getElementById('orderTimeStart').value, 
+            time_window_end: document.getElementById('orderTimeEnd').value, 
+            status: 'новый', created_at: serverTimestamp() 
+        });
         document.getElementById('orderFormModal').classList.add('hidden');
         document.getElementById('orderAddress').value=''; document.getElementById('orderPhone').value=''; document.getElementById('orderWeight').value='';
+        document.getElementById('orderTimeStart').value=''; document.getElementById('orderTimeEnd').value='';
     };
     document.getElementById('addCourierQuickBtn').onclick = async () => { const name = prompt("Имя курьера"); if(name) { const userRef = await addDoc(collection(db, "users"), { name: name, email: name+"@temp.com", role: "курьер", created_at: serverTimestamp() }); await addDoc(collection(db,"couriers"),{ user_id: userRef.id, vehicle_type:"авто", is_active:true, last_lat:0, last_lng:0 }); } };
     document.getElementById('runOptimizationBtn').onclick = async () => {
@@ -272,13 +300,7 @@
         const courierIds = activeCourSnap.docs.map(d=>d.id);
         let idx=0; const batch = writeBatch(db);
         for(const docSnap of newOrdersSnap.docs){
-            const courierId = courierIds[idx % courierIds.length];
-            batch.update(doc(db,"orders",docSnap.id), { status:'в работе', courier_id: courierId, assigned_at: serverTimestamp() });
-            // Создаём маршрут и точки маршрута
-            const routeRef = doc(collection(db,"routes"));
-            batch.set(routeRef, { courier_id: courierId, date: new Date().toISOString().split('T')[0], total_km: Math.random()*20+10, status: 'отправлен', created_at: serverTimestamp() });
-            const pointRef = doc(collection(db,"routePoints"));
-            batch.set(pointRef, { route_id: routeRef.id, order_id: docSnap.id, sequence: idx+1, created_at: serverTimestamp() });
+            batch.update(doc(db,"orders",docSnap.id), { status:'в работе', courier_id: courierIds[idx % courierIds.length], assigned_at: serverTimestamp() });
             idx++;
         }
         await batch.commit();
@@ -290,111 +312,167 @@
         const cSnap = await getDocs(query(collection(db,"couriers"), where("user_id","==",currentUser.user_id)));
         if(cSnap.empty) return;
         courierDocId = cSnap.docs[0].id;
-        await updateDoc(doc(db,"couriers",courierDocId), { is_active: true, gps_updated_at: serverTimestamp() });
-        loadCourierStats();
+        const courierData = cSnap.docs[0].data();
+        courierIsActive = courierData.is_active || false;
+        updateShiftUI();
+        
+        document.getElementById('toggleShiftBtn').onclick = async () => {
+            if(courierIsActive) {
+                await updateDoc(doc(db,"couriers",courierDocId), { is_active: false });
+                courierIsActive = false;
+                alert("Смена завершена");
+            } else {
+                await updateDoc(doc(db,"couriers",courierDocId), { is_active: true });
+                courierIsActive = true;
+                alert("Вы вышли на смену");
+            }
+            updateShiftUI();
+        };
+        
         onSnapshot(query(collection(db,"orders"), where("courier_id","==",courierDocId)), (snap) => {
-            const tasks = []; let completed=0, inProgress=0;
-            snap.forEach(d => { const data=d.data(); if(data.status==='выполнен') completed++; if(data.status==='в работе') { tasks.push({id:d.id, ...data}); inProgress++; } });
+            const orders = [];
+            let completed=0, declined=0, active=0;
+            snap.forEach(d => { 
+                const data = d.data(); 
+                orders.push({id:d.id, ...data});
+                if(data.status === 'выполнен') completed++;
+                else if(data.status === 'отклонён') declined++;
+                else if(data.status === 'в работе' || data.status === 'доставка') active++;
+            });
             document.getElementById('courierCompletedCount').innerText = completed;
-            document.getElementById('activeTasksCount').innerText = tasks.length;
-            document.getElementById('inProgressCount').innerText = inProgress;
-            currentTasks = tasks;
-            renderCourierHistory(snap);
-            if(currentTasks.length===0) { document.getElementById('courierWaitBlock').classList.remove('hidden'); document.getElementById('courierActiveBlock').classList.add('hidden'); }
-            else { document.getElementById('courierWaitBlock').classList.add('hidden'); document.getElementById('courierActiveBlock').classList.remove('hidden'); currentTaskIndex = 0; renderCurrentTask(); }
+            document.getElementById('courierDeclinedCount').innerText = declined;
+            document.getElementById('courierActiveCount').innerText = active;
+            document.getElementById('courierTotalCount').innerText = orders.length;
+            
+            if(!courierIsActive) {
+                document.getElementById('courierWaitBlock').classList.remove('hidden');
+                document.getElementById('courierActiveBlock').classList.add('hidden');
+                return;
+            }
+            
+            const pending = orders.find(o => o.status === 'в работе');
+            const inDelivery = orders.find(o => o.status === 'доставка');
+            
+            if(pending) {
+                pendingOrder = pending;
+                currentDeliveryOrder = null;
+                document.getElementById('courierWaitBlock').classList.add('hidden');
+                document.getElementById('courierActiveBlock').classList.remove('hidden');
+                document.getElementById('acceptDeclineButtons').classList.remove('hidden');
+                document.getElementById('arrivalButtons').classList.add('hidden');
+                document.getElementById('actionButtons').classList.add('hidden');
+                document.getElementById('currentAddressDisplay').innerText = pending.address;
+                document.getElementById('orderTimeDisplay').innerHTML = pending.time_window_start ? `<i class="fas fa-clock mr-1"></i> ${formatDateTime(pending.time_window_start)} - ${formatDateTime(pending.time_window_end)}` : '';
+                document.getElementById('orderWeightDisplay').innerHTML = `<i class="fas fa-weight-hanging mr-1"></i> ${pending.weight_kg || 0} кг`;
+                showAddressOnMap(pending.address);
+            } else if(inDelivery) {
+                currentDeliveryOrder = inDelivery;
+                pendingOrder = null;
+                document.getElementById('courierWaitBlock').classList.add('hidden');
+                document.getElementById('courierActiveBlock').classList.remove('hidden');
+                document.getElementById('acceptDeclineButtons').classList.add('hidden');
+                document.getElementById('arrivalButtons').classList.remove('hidden');
+                document.getElementById('actionButtons').classList.add('hidden');
+                document.getElementById('currentAddressDisplay').innerText = inDelivery.address;
+                document.getElementById('orderTimeDisplay').innerHTML = inDelivery.time_window_start ? `<i class="fas fa-clock mr-1"></i> ${formatDateTime(inDelivery.time_window_start)} - ${formatDateTime(inDelivery.time_window_end)}` : '';
+                document.getElementById('orderWeightDisplay').innerHTML = `<i class="fas fa-weight-hanging mr-1"></i> ${inDelivery.weight_kg || 0} кг`;
+                showAddressOnMap(inDelivery.address);
+            } else if(orders.length === 0 || active === 0) {
+                document.getElementById('courierWaitBlock').classList.remove('hidden');
+                document.getElementById('courierActiveBlock').classList.add('hidden');
+                pendingOrder = null;
+                currentDeliveryOrder = null;
+            } else {
+                document.getElementById('courierActiveBlock').classList.remove('hidden');
+                document.getElementById('acceptDeclineButtons').classList.add('hidden');
+            }
+            renderCourierHistory(orders);
         });
-        // Обновление GPS (имитация)
-        setInterval(async () => {
-            if(courierDocId) await updateDoc(doc(db,"couriers",courierDocId), { last_lat: 55.75 + Math.random()*0.1, last_lng: 37.61 + Math.random()*0.1, gps_updated_at: serverTimestamp() });
-        }, 30000);
     }
-    async function loadCourierStats() {
-        const ordersSnap = await getDocs(query(collection(db,"orders"), where("courier_id","==",courierDocId)));
-        let done=0, prob=0;
-        ordersSnap.forEach(d => { if(d.data().status==='выполнен') done++; if(d.data().status==='проблема') prob++; });
+    
+    function updateShiftUI() {
+        const statusSpan = document.getElementById('shiftStatus');
+        const btn = document.getElementById('toggleShiftBtn');
+        if(courierIsActive) {
+            statusSpan.innerHTML = '✅ На смене';
+            statusSpan.className = 'text-emerald-400 font-bold';
+            btn.innerHTML = '🏁 Завершить смену';
+            btn.classList.remove('bg-emerald-600');
+            btn.classList.add('bg-red-600');
+        } else {
+            statusSpan.innerHTML = '❌ Не в смене';
+            statusSpan.className = 'text-red-400 font-bold';
+            btn.innerHTML = '🚀 Выйти на смену';
+            btn.classList.remove('bg-red-600');
+            btn.classList.add('bg-emerald-600');
+        }
     }
-    function renderCourierHistory(snapshot) {
+    
+    function renderCourierHistory(orders) {
         const container = document.getElementById('courierHistoryList');
         let html = '';
-        snapshot.forEach(d => {
-            const o = d.data();
-            const statusClass = o.status==='выполнен'?'border-emerald-500':(o.status==='проблема'?'border-red-500':'border-slate-600');
-            html += `<div class="history-card ${statusClass}"><div class="flex justify-between"><span class="text-xs font-mono">#${d.id.slice(-5)}</span><span class="text-xs ${o.status==='выполнен'?'text-emerald-400':(o.status==='проблема'?'text-red-400':'text-slate-400')}">${o.status}</span></div><div class="text-sm mt-1">${o.address}</div><div class="text-xs text-slate-400">${o.completed_at ? '✅ Завершён' : (o.problem_note ? '⚠️ '+o.problem_note : '')}</div></div>`;
+        orders.slice(0, 15).forEach(o => {
+            let statusText = '', statusColor = '';
+            if(o.status === 'выполнен') { statusText = '✅ Выполнен'; statusColor = 'border-emerald-500'; }
+            else if(o.status === 'отклонён') { statusText = '❌ Отклонён'; statusColor = 'border-red-500'; }
+            else if(o.status === 'в работе') { statusText = '⏳ Ожидает решения'; statusColor = 'border-amber-500'; }
+            else if(o.status === 'доставка') { statusText = '🚚 В доставке'; statusColor = 'border-blue-500'; }
+            else { statusText = o.status; statusColor = 'border-slate-600'; }
+            html += `<div class="history-card ${statusColor}"><div class="flex justify-between"><span class="text-xs font-mono">#${o.id.slice(-5)}</span><span class="text-xs">${statusText}</span></div><div class="text-sm mt-1">${o.address}</div><div class="text-xs text-slate-400">${o.weight_kg || 0} кг</div></div>`;
         });
         container.innerHTML = html || '<div class="text-center text-slate-500 py-4">История пуста</div>';
     }
-    function renderCurrentTask() {
-        if(currentTasks.length === 0 || currentTaskIndex >= currentTasks.length) {
-            document.getElementById('currentTaskCard').innerHTML = `<div class="text-center py-6"><i class="fas fa-check-circle text-4xl text-emerald-400"></i><p class="mt-2 font-bold">Маршрут завершён! 🎉</p></div>`;
-            document.getElementById('courierFinishShiftBtn').classList.remove('hidden');
-            return;
+    
+    document.getElementById('acceptOrderBtn').onclick = async () => {
+        if(pendingOrder) {
+            await updateDoc(doc(db, "orders", pendingOrder.id), { status: 'доставка', accepted_at: serverTimestamp() });
+            pendingOrder = null;
+            alert("✅ Заказ принят! Отправляйтесь к месту доставки.");
         }
-        const task = currentTasks[currentTaskIndex];
-        document.getElementById('currentAddressDisplay').innerText = task.address;
-        document.getElementById('arrivalButtons').classList.remove('hidden');
-        document.getElementById('actionButtons').classList.add('hidden');
-        document.getElementById('courierFinishShiftBtn').classList.add('hidden');
-        showAddressOnMap(task.address);
-    }
+    };
+    
+    document.getElementById('declineOrderBtn').onclick = async () => {
+        if(pendingOrder) {
+            const reason = prompt("Укажите причину отклонения:");
+            await updateDoc(doc(db, "orders", pendingOrder.id), { status: 'отклонён', decline_reason: reason, declined_at: serverTimestamp() });
+            pendingOrder = null;
+            alert("❌ Заказ отклонён");
+        }
+    };
+    
     document.getElementById('arrivedBtn').onclick = async () => {
-        const task = currentTasks[currentTaskIndex];
-        const pointsSnap = await getDocs(query(collection(db,"routePoints"), where("order_id","==",task.id)));
-        if(!pointsSnap.empty) await updateDoc(doc(db,"routePoints",pointsSnap.docs[0].id), { arrived_at: serverTimestamp() });
-        document.getElementById('arrivalButtons').classList.add('hidden');
-        document.getElementById('actionButtons').classList.remove('hidden');
-    };
-    document.getElementById('completeDeliveryBtn').onclick = async () => {
-        const task = currentTasks[currentTaskIndex];
-        await updateDoc(doc(db,"orders",task.id), { status:'выполнен', completed_at: serverTimestamp() });
-        const pointsSnap = await getDocs(query(collection(db,"routePoints"), where("order_id","==",task.id)));
-        if(!pointsSnap.empty) await updateDoc(doc(db,"routePoints",pointsSnap.docs[0].id), { completed_at: serverTimestamp() });
-        currentTaskIndex++;
-        renderCurrentTask();
-        const completedSnap = await getDocs(query(collection(db,"orders"), where("courier_id","==",courierDocId), where("status","==","выполнен")));
-        document.getElementById('courierCompletedCount').innerText = completedSnap.size;
-    };
-    document.getElementById('problemDeliveryBtn').onclick = () => document.getElementById('problemTextModal').classList.remove('hidden');
-    document.getElementById('submitProblemBtn').onclick = async () => {
-        const task = currentTasks[currentTaskIndex];
-        const note = document.getElementById('problemDesc').value;
-        await updateDoc(doc(db,"orders",task.id), { status:'проблема', problem_note: note });
-        const pointsSnap = await getDocs(query(collection(db,"routePoints"), where("order_id","==",task.id)));
-        if(!pointsSnap.empty) await updateDoc(doc(db,"routePoints",pointsSnap.docs[0].id), { problem_note: note });
-        document.getElementById('problemTextModal').classList.add('hidden');
-        currentTaskIndex++;
-        renderCurrentTask();
-    };
-    document.getElementById('courierFinishShiftBtn').onclick = async () => { await updateDoc(doc(db,"couriers",courierDocId), { is_active: false }); alert("Смена завершена"); location.reload(); };
-
-    // ========== ЭКСПОРТ В ACCESS (все 6 таблиц) ==========
-    document.getElementById('exportAccessBtn').onclick = async () => {
-        const tables = ['users', 'couriers', 'orders', 'routes', 'routePoints', 'reports'];
-        for(const table of tables){
-            const snap = await getDocs(collection(db, table));
-            let headers = new Set(['id']);
-            snap.forEach(d => { Object.keys(d.data()).forEach(k=>headers.add(k)); });
-            const headerArr = Array.from(headers);
-            let csvRows = [headerArr.join(',')];
-            for(const docSnap of snap.docs){
-                const data = docSnap.data();
-                const row = headerArr.map(h => {
-                    if(h === 'id') return `"${docSnap.id}"`;
-                    let val = data[h];
-                    if(val && val.toDate) val = val.toDate().toISOString();
-                    if(val === undefined || val === null) return '';
-                    if(typeof val === 'string') return `"${val.replace(/"/g, '""')}"`;
-                    return val;
-                });
-                csvRows.push(row.join(','));
-            }
-            const blob = new Blob(["\uFEFF" + csvRows.join('\n')], {type: 'text/csv;charset=utf-8;'});
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url; a.download = `SmartRoute_${table}.csv`;
-            a.click(); URL.revokeObjectURL(url);
+        const snap = await getDocs(query(collection(db,"orders"), where("courier_id","==",courierDocId), where("status","==","доставка")));
+        if(!snap.empty) {
+            currentDeliveryOrder = { id: snap.docs[0].id, ...snap.docs[0].data() };
+            document.getElementById('arrivalButtons').classList.add('hidden');
+            document.getElementById('actionButtons').classList.remove('hidden');
         }
-        alert("✅ Экспортировано 6 таблиц: Users, Couriers, Orders, Routes, RoutePoints, Reports");
     };
+    
+    document.getElementById('completeDeliveryBtn').onclick = async () => {
+        const snap = await getDocs(query(collection(db,"orders"), where("courier_id","==",courierDocId), where("status","==","доставка")));
+        if(!snap.empty) {
+            await updateDoc(doc(db,"orders",snap.docs[0].id), { status:'выполнен', completed_at: serverTimestamp() });
+            document.getElementById('actionButtons').classList.add('hidden');
+            alert("✅ Доставка завершена!");
+        }
+    };
+    
+    document.getElementById('problemDeliveryBtn').onclick = () => document.getElementById('problemTextModal').classList.remove('hidden');
+    
+    document.getElementById('submitProblemBtn').onclick = async () => {
+        const note = document.getElementById('problemDesc').value;
+        const snap = await getDocs(query(collection(db,"orders"), where("courier_id","==",courierDocId), where("status","==","доставка")));
+        if(!snap.empty) {
+            await updateDoc(doc(db,"orders",snap.docs[0].id), { status:'проблема', problem_note: note });
+            document.getElementById('problemTextModal').classList.add('hidden');
+            document.getElementById('actionButtons').classList.add('hidden');
+            alert("⚠️ Проблема отправлена диспетчеру");
+        }
+        document.getElementById('problemDesc').value = '';
+    };
+    
+    document.getElementById('courierFinishShiftBtn').onclick = async () => { await updateDoc(doc(db,"couriers",courierDocId), { is_active: false }); alert("Смена завершена"); location.reload(); };
 </script>
 </body>
 </html>
