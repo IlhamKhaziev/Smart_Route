@@ -28,6 +28,7 @@
         .map-container { height: 240px; border-radius: 20px; overflow: hidden; border: 1px solid #2d3a5e; }
         .leaflet-container { background: #0f172a; }
         .history-card { background: rgba(0,0,0,0.3); border-radius: 1rem; padding: 0.75rem; margin-bottom: 0.5rem; border-left: 3px solid; }
+        .stat-card { background: rgba(0,0,0,0.3); border-radius: 1rem; padding: 0.5rem; text-align: center; }
     </style>
 </head>
 <body class="p-4 md:p-6">
@@ -89,9 +90,8 @@
             </div>
             <div class="lg:col-span-7 space-y-6">
                 <div class="glass rounded-2xl p-5">
-                    <h2 class="font-bold text-xl"><i class="fas fa-users text-purple-400 mr-2"></i> Курьеры</h2>
+                    <h2 class="font-bold text-xl"><i class="fas fa-users text-purple-400 mr-2"></i> Активные курьеры</h2>
                     <div id="dispatcherCouriersList" class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-64 overflow-y-auto scroll-custom"></div>
-                    <button id="addCourierQuickBtn" class="mt-4 w-full border border-dashed border-slate-600 py-2 rounded-xl text-slate-400 text-sm"><i class="fas fa-plus-circle mr-1"></i> Добавить курьера</button>
                 </div>
                 <div class="glass rounded-2xl p-5">
                     <h2 class="font-bold text-xl mb-2">📊 Статистика</h2>
@@ -113,6 +113,24 @@
             <button id="toggleShiftBtn" class="px-6 py-2 bg-emerald-600 rounded-xl font-bold text-sm hover:bg-emerald-500 transition" disabled>⏳ Загрузка...</button>
         </div>
 
+        <!-- Компактная статистика курьера -->
+        <div class="glass rounded-2xl p-4">
+            <div class="grid grid-cols-3 gap-3 text-center">
+                <div class="stat-card border-l-3 border-emerald-500">
+                    <div class="text-2xl font-bold text-emerald-400" id="courierCompletedCount">0</div>
+                    <div class="text-xs text-slate-400">✅ Выполнено</div>
+                </div>
+                <div class="stat-card">
+                    <div class="text-2xl font-bold text-blue-400" id="courierAcceptedCount">0</div>
+                    <div class="text-xs text-slate-400">📦 Принято</div>
+                </div>
+                <div class="stat-card">
+                    <div class="text-2xl font-bold text-red-400" id="courierDeclinedCount">0</div>
+                    <div class="text-xs text-slate-400">❌ Отклонено</div>
+                </div>
+            </div>
+        </div>
+
         <div id="courierWaitBlock" class="glass rounded-2xl p-8 text-center">
             <i class="fas fa-hourglass-half text-4xl text-slate-500 mb-3"></i>
             <h3 class="text-xl font-bold">Ожидание заказов</h3>
@@ -120,13 +138,6 @@
         </div>
 
         <div id="courierActiveBlock" class="hidden space-y-5">
-            <div class="glass rounded-2xl p-5 grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-                <div><div class="text-2xl font-bold text-emerald-400" id="courierCompletedCount">0</div><div class="text-xs text-slate-400">✅ Выполнено</div></div>
-                <div><div class="text-2xl font-bold text-red-400" id="courierDeclinedCount">0</div><div class="text-xs text-slate-400">❌ Отклонено</div></div>
-                <div><div class="text-2xl font-bold text-blue-400" id="courierActiveCount">0</div><div class="text-xs text-slate-400">📦 В работе</div></div>
-                <div><div class="text-2xl font-bold text-amber-400" id="courierTotalCount">0</div><div class="text-xs text-slate-400">📊 Всего</div></div>
-            </div>
-
             <div class="glass rounded-2xl p-4"><div id="courierMap" class="map-container" style="height: 260px;"></div></div>
 
             <div id="currentTaskCard" class="glass rounded-2xl p-6 border-l-8 border-l-blue-500">
@@ -158,7 +169,7 @@
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
     import { getFirestore, collection, addDoc, getDocs, query, where, updateDoc, doc, serverTimestamp, onSnapshot, deleteDoc, writeBatch, getDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
-    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, deleteUser } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
     const firebaseConfig = {
   apiKey: "AIzaSyCHpQu8po8ww50PHN6BdfMrUVtAXBnmwzo",
@@ -256,7 +267,6 @@
     // ========== УДАЛЕНИЕ АККАУНТА ==========
     async function deleteAccount() {
         if (!currentUser.uid) return;
-        
         const confirmModal = document.getElementById('confirmDeleteModal');
         if (confirmModal) confirmModal.classList.remove('hidden');
     }
@@ -266,7 +276,6 @@
         if (confirmModal) confirmModal.classList.add('hidden');
         
         try {
-            // Находим пользователя в коллекции users
             const usersQuery = query(collection(db, "users"), where("google_id", "==", currentUser.uid));
             const usersSnap = await getDocs(usersQuery);
             
@@ -274,17 +283,12 @@
                 const userDoc = usersSnap.docs[0];
                 const userId = userDoc.id;
                 
-                // Если пользователь - курьер, удаляем связанные данные
                 if (currentUser.role === 'курьер') {
-                    // Находим запись курьера
                     const couriersQuery = query(collection(db, "couriers"), where("user_id", "==", userId));
                     const couriersSnap = await getDocs(couriersQuery);
                     
                     if (!couriersSnap.empty) {
-                        const courierDoc = couriersSnap.docs[0];
-                        const courierId = courierDoc.id;
-                        
-                        // Обновляем заказы (убираем привязку к курьеру)
+                        const courierId = couriersSnap.docs[0].id;
                         const ordersQuery = query(collection(db, "orders"), where("courier_id", "==", courierId));
                         const ordersSnap = await getDocs(ordersQuery);
                         const batch = writeBatch(db);
@@ -292,31 +296,20 @@
                             batch.update(doc(db, "orders", orderDoc.id), { courier_id: null });
                         });
                         await batch.commit();
-                        
-                        // Удаляем запись курьера
                         await deleteDoc(doc(db, "couriers", courierId));
                     }
                 }
-                
-                // Удаляем пользователя из коллекции users
                 await deleteDoc(doc(db, "users", userId));
             }
             
-            // Выход из аккаунта
             await signOut(auth);
-            
-            // Обнуляем состояние
             currentUser = { uid: null, email: null, name: null, role: null, user_id: null };
             courierDocId = null;
-            
-            // Скрываем панели
             document.getElementById('dispatcherPanel').classList.add('hidden');
             document.getElementById('courierPanel').classList.add('hidden');
             document.getElementById('deleteAccountBtn').classList.add('hidden');
             document.getElementById('googleLoginBtn').innerHTML = `<i class="fab fa-google"></i> Войти`;
-            
             alert("✅ Аккаунт успешно удалён из Firebase. Вы можете зарегистрироваться заново.");
-            
         } catch (error) {
             console.error("Ошибка при удалении аккаунта:", error);
             alert("Ошибка при удалении: " + error.message);
@@ -333,8 +326,6 @@
             currentUser.email = user.email; 
             currentUser.name = user.displayName;
             loginBtn.innerHTML = `<i class="fas fa-sign-out-alt"></i> ${user.displayName.split(' ')[0]}`;
-            
-            // Показываем кнопку удаления аккаунта
             const deleteBtn = document.getElementById('deleteAccountBtn');
             if (deleteBtn) deleteBtn.classList.remove('hidden');
             
@@ -420,11 +411,15 @@
         
         onSnapshot(collection(db, "couriers"), async (snap) => { 
             let active=0; 
+            const activeCouriers = [];
             snap.forEach(d => { 
-                if(d.data().is_active===true) active++; 
+                if(d.data().is_active===true) {
+                    active++;
+                    activeCouriers.push(d);
+                }
             }); 
             document.getElementById('statActiveCouriers').innerText = active; 
-            renderCouriersList(snap); 
+            renderCouriersList(activeCouriers); 
         });
     }
     
@@ -443,16 +438,18 @@
         if(confirm("Удалить заказ?")) await deleteDoc(doc(db, "orders", id)); 
     };
     
-    function renderCouriersList(snapshot) {
+    function renderCouriersList(activeCouriers) {
         const container = document.getElementById('dispatcherCouriersList');
         let html = '';
-        snapshot.forEach(async docSnap => {
+        if (activeCouriers.length === 0) {
+            container.innerHTML = '<div class="text-center py-8 text-slate-500 col-span-2">Нет активных курьеров</div>';
+            return;
+        }
+        for (const docSnap of activeCouriers) {
             const c = docSnap.data();
-            const userSnap = await getDoc(doc(db, "users", c.user_id));
-            const userName = userSnap.exists() ? userSnap.data().name : 'Курьер';
-            html += `<div class="bg-slate-800/30 p-2 rounded-xl flex justify-between items-center"><span><i class="fas fa-user-circle text-purple-400"></i> ${userName} (${c.vehicle_type})</span><div class="flex gap-2"><span class="text-emerald-400 text-xs">${c.is_active ? '● НА СМЕНЕ' : '● НЕ В СМЕНЕ'}</span></div></div>`;
-        });
-        container.innerHTML = html || '<div class="text-center py-4 text-slate-500">Нет курьеров</div>';
+            html += `<div class="bg-slate-800/30 p-2 rounded-xl flex justify-between items-center"><span><i class="fas fa-user-circle text-purple-400"></i> ${c.name || 'Курьер'} (${c.vehicle_type})</span><span class="text-emerald-400 text-xs">● НА СМЕНЕ</span></div>`;
+        }
+        container.innerHTML = html;
     }
     
     document.getElementById('newOrderDispatcherBtn').onclick = () => document.getElementById('orderFormModal').classList.remove('hidden');
@@ -475,27 +472,6 @@
         document.getElementById('orderWeight').value='';
         document.getElementById('orderTimeStart').value=''; 
         document.getElementById('orderTimeEnd').value='';
-    };
-    
-    document.getElementById('addCourierQuickBtn').onclick = async () => { 
-        const name = prompt("Имя курьера"); 
-        if(name) { 
-            const userRef = await addDoc(collection(db, "users"), { 
-                name: name, 
-                email: name+"@temp.com", 
-                role: "курьер", 
-                created_at: serverTimestamp() 
-            }); 
-            await addDoc(collection(db,"couriers"),{ 
-                user_id: userRef.id, 
-                vehicle_type:"авто", 
-                is_active: true, 
-                last_lat:0, 
-                last_lng:0,
-                created_at: serverTimestamp()
-            }); 
-            alert(`✅ Курьер ${name} добавлен`);
-        } 
     };
     
     document.getElementById('runOptimizationBtn').onclick = async () => {
@@ -560,23 +536,21 @@
         
         onSnapshot(query(collection(db,"orders"), where("courier_id","==",courierDocId)), (snap) => {
             const orders = [];
-            let completed=0, declined=0, active=0;
+            let completed=0, accepted=0, declined=0;
             snap.forEach(d => { 
                 const data = d.data(); 
                 orders.push({id:d.id, ...data});
                 if(data.status === 'выполнен') completed++;
                 else if(data.status === 'отклонён') declined++;
-                else if(data.status === 'в работе' || data.status === 'доставка') active++;
+                else if(data.status === 'доставка' || data.status === 'в работе') accepted++;
             });
             
             const completedEl = document.getElementById('courierCompletedCount');
+            const acceptedEl = document.getElementById('courierAcceptedCount');
             const declinedEl = document.getElementById('courierDeclinedCount');
-            const activeEl = document.getElementById('courierActiveCount');
-            const totalEl = document.getElementById('courierTotalCount');
             if (completedEl) completedEl.innerText = completed;
+            if (acceptedEl) acceptedEl.innerText = accepted;
             if (declinedEl) declinedEl.innerText = declined;
-            if (activeEl) activeEl.innerText = active;
-            if (totalEl) totalEl.innerText = orders.length;
             
             if(!courierIsActive) {
                 const waitBlock = document.getElementById('courierWaitBlock');
@@ -622,7 +596,7 @@
                 if (timeDisplay) timeDisplay.innerHTML = inDelivery.time_window_start ? `<i class="fas fa-clock mr-1"></i> ${formatDateTime(inDelivery.time_window_start)} - ${formatDateTime(inDelivery.time_window_end)}` : '';
                 if (weightDisplay) weightDisplay.innerHTML = `<i class="fas fa-weight-hanging mr-1"></i> ${inDelivery.weight_kg || 0} кг`;
                 showAddressOnMap(inDelivery.address);
-            } else if(orders.length === 0 || active === 0) {
+            } else if(orders.length === 0 || (orders.filter(o => o.status === 'в работе' || o.status === 'доставка').length === 0)) {
                 if (waitBlock) waitBlock.classList.remove('hidden');
                 if (activeBlock) activeBlock.classList.add('hidden');
                 pendingOrder = null;
