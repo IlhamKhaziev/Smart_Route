@@ -19,8 +19,6 @@
         .btn-danger:hover { background: #b91c1c; }
         .btn-success { background: #10b981; }
         .btn-success:hover { background: #059669; }
-        .btn-warning { background: #f59e0b; }
-        .btn-warning:hover { background: #d97706; }
         .status-badge { padding: 4px 12px; border-radius: 40px; font-size: 11px; font-weight: 600; width: fit-content; }
         .status-new { background: #f59e0b20; color: #fbbf24; border: 1px solid #f59e0b40; }
         .status-work { background: #3b82f620; color: #60a5fa; border: 1px solid #3b82f640; }
@@ -62,12 +60,14 @@
         </div>
     </div>
 
-    <!-- Регистрация курьера -->
+    <!-- Регистрация курьера (выбор транспорта) -->
     <div id="courierVehicleModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center hidden">
         <div class="glass rounded-3xl p-6 max-w-sm w-full mx-4">
-            <h3 class="text-xl font-bold mb-3">Транспорт</h3>
+            <h3 class="text-xl font-bold mb-3">Укажите транспорт</h3>
             <select id="vehicleSelect" class="w-full p-3 bg-slate-800 rounded-xl border border-slate-600 mb-5">
-                <option value="авто">🚗 Автомобиль</option><option value="вело">🚲 Велосипед</option><option value="пешком">🚶 Пеший</option>
+                <option value="авто">🚗 Автомобиль</option>
+                <option value="вело">🚲 Велосипед</option>
+                <option value="пешком">🚶 Пеший</option>
             </select>
             <button id="saveVehicleBtn" class="w-full btn-primary py-3 rounded-xl font-bold">Завершить</button>
         </div>
@@ -112,13 +112,13 @@
         </div>
 
         <!-- Блок ожидания -->
-        <div id="courierWaitBlock" class="glass rounded-2xl p-8 text-center hidden">
+        <div id="courierWaitBlock" class="glass rounded-2xl p-8 text-center">
             <i class="fas fa-hourglass-half text-4xl text-slate-500 mb-3"></i>
             <h3 class="text-xl font-bold">Ожидание заказов</h3>
             <p class="text-slate-400">Когда диспетчер назначит заказы, они появятся здесь</p>
         </div>
 
-        <!-- Активный блок -->
+        <!-- Активный блок (изначально скрыт) -->
         <div id="courierActiveBlock" class="hidden space-y-5">
             <!-- Статистика курьера -->
             <div class="glass rounded-2xl p-5 grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
@@ -166,13 +166,14 @@
     import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
     const firebaseConfig = {
-        apiKey: "AIzaSyCHpQu8po8ww50PHN6BdfMrUVtAXBnmwzo",
-        authDomain: "smart-route-8ff6a.firebaseapp.com",
-        projectId: "smart-route-8ff6a",
-        storageBucket: "smart-route-8ff6a.firebasestorage.app",
-        messagingSenderId: "610410290985",
-        appId: "1:610410290985:web:e59962bd9b42d935bda138"
-    };
+  apiKey: "AIzaSyCHpQu8po8ww50PHN6BdfMrUVtAXBnmwzo",
+  authDomain: "smart-route-8ff6a.firebaseapp.com",
+  projectId: "smart-route-8ff6a",
+  storageBucket: "smart-route-8ff6a.firebasestorage.app",
+  messagingSenderId: "610410290985",
+  appId: "1:610410290985:web:e59962bd9b42d935bda138",
+  measurementId: "G-4CZX8SNDBD"
+};
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const auth = getAuth(app);
@@ -309,27 +310,45 @@
 
     // ========== КУРЬЕР ==========
     async function initCourier() {
+        // Ждём загрузки данных курьера
         const cSnap = await getDocs(query(collection(db,"couriers"), where("user_id","==",currentUser.user_id)));
-        if(cSnap.empty) return;
-        courierDocId = cSnap.docs[0].id;
-        const courierData = cSnap.docs[0].data();
-        courierIsActive = courierData.is_active || false;
+        if(cSnap.empty) {
+            console.error("Курьер не найден");
+            return;
+        }
+        const courierDoc = cSnap.docs[0];
+        courierDocId = courierDoc.id;
+        const courierData = courierDoc.data();
+        courierIsActive = courierData.is_active === true;
+        
+        // Обновляем UI статуса смены
         updateShiftUI();
         
-        document.getElementById('toggleShiftBtn').onclick = async () => {
-            if(courierIsActive) {
-                await updateDoc(doc(db,"couriers",courierDocId), { is_active: false });
+        // Устанавливаем обработчик кнопки переключения смены
+        const toggleBtn = document.getElementById('toggleShiftBtn');
+        // Убираем старый обработчик, чтобы не дублировался
+        const newToggleBtn = toggleBtn.cloneNode(true);
+        toggleBtn.parentNode.replaceChild(newToggleBtn, toggleBtn);
+        
+        newToggleBtn.addEventListener('click', async () => {
+            if (!courierDocId) {
+                alert("Ошибка: данные курьера не загружены");
+                return;
+            }
+            if (courierIsActive) {
+                await updateDoc(doc(db, "couriers", courierDocId), { is_active: false });
                 courierIsActive = false;
                 alert("Смена завершена");
             } else {
-                await updateDoc(doc(db,"couriers",courierDocId), { is_active: true });
+                await updateDoc(doc(db, "couriers", courierDocId), { is_active: true });
                 courierIsActive = true;
                 alert("Вы вышли на смену");
             }
             updateShiftUI();
-        };
+        });
         
-        onSnapshot(query(collection(db,"orders"), where("courier_id","==",courierDocId)), (snap) => {
+        // Загружаем заказы курьера
+        const unsubscribe = onSnapshot(query(collection(db,"orders"), where("courier_id","==",courierDocId)), (snap) => {
             const orders = [];
             let completed=0, declined=0, active=0;
             snap.forEach(d => { 
@@ -393,23 +412,28 @@
     function updateShiftUI() {
         const statusSpan = document.getElementById('shiftStatus');
         const btn = document.getElementById('toggleShiftBtn');
-        if(courierIsActive) {
+        if (courierIsActive) {
             statusSpan.innerHTML = '✅ На смене';
             statusSpan.className = 'text-emerald-400 font-bold';
-            btn.innerHTML = '🏁 Завершить смену';
-            btn.classList.remove('bg-emerald-600');
-            btn.classList.add('bg-red-600');
+            if (btn) {
+                btn.innerHTML = '🏁 Завершить смену';
+                btn.classList.remove('bg-emerald-600');
+                btn.classList.add('bg-red-600');
+            }
         } else {
             statusSpan.innerHTML = '❌ Не в смене';
             statusSpan.className = 'text-red-400 font-bold';
-            btn.innerHTML = '🚀 Выйти на смену';
-            btn.classList.remove('bg-red-600');
-            btn.classList.add('bg-emerald-600');
+            if (btn) {
+                btn.innerHTML = '🚀 Выйти на смену';
+                btn.classList.remove('bg-red-600');
+                btn.classList.add('bg-emerald-600');
+            }
         }
     }
     
     function renderCourierHistory(orders) {
         const container = document.getElementById('courierHistoryList');
+        if (!container) return;
         let html = '';
         orders.slice(0, 15).forEach(o => {
             let statusText = '', statusColor = '';
@@ -423,56 +447,50 @@
         container.innerHTML = html || '<div class="text-center text-slate-500 py-4">История пуста</div>';
     }
     
-    document.getElementById('acceptOrderBtn').onclick = async () => {
-        if(pendingOrder) {
+    // Обработчики кнопок (должны быть определены после загрузки DOM)
+    document.addEventListener('click', async (e) => {
+        if (e.target.id === 'acceptOrderBtn' && pendingOrder) {
             await updateDoc(doc(db, "orders", pendingOrder.id), { status: 'доставка', accepted_at: serverTimestamp() });
             pendingOrder = null;
             alert("✅ Заказ принят! Отправляйтесь к месту доставки.");
         }
-    };
-    
-    document.getElementById('declineOrderBtn').onclick = async () => {
-        if(pendingOrder) {
+        else if (e.target.id === 'declineOrderBtn' && pendingOrder) {
             const reason = prompt("Укажите причину отклонения:");
             await updateDoc(doc(db, "orders", pendingOrder.id), { status: 'отклонён', decline_reason: reason, declined_at: serverTimestamp() });
             pendingOrder = null;
             alert("❌ Заказ отклонён");
         }
-    };
-    
-    document.getElementById('arrivedBtn').onclick = async () => {
-        const snap = await getDocs(query(collection(db,"orders"), where("courier_id","==",courierDocId), where("status","==","доставка")));
-        if(!snap.empty) {
-            currentDeliveryOrder = { id: snap.docs[0].id, ...snap.docs[0].data() };
-            document.getElementById('arrivalButtons').classList.add('hidden');
-            document.getElementById('actionButtons').classList.remove('hidden');
+        else if (e.target.id === 'arrivedBtn') {
+            const snap = await getDocs(query(collection(db,"orders"), where("courier_id","==",courierDocId), where("status","==","доставка")));
+            if(!snap.empty) {
+                currentDeliveryOrder = { id: snap.docs[0].id, ...snap.docs[0].data() };
+                document.getElementById('arrivalButtons').classList.add('hidden');
+                document.getElementById('actionButtons').classList.remove('hidden');
+            }
         }
-    };
-    
-    document.getElementById('completeDeliveryBtn').onclick = async () => {
-        const snap = await getDocs(query(collection(db,"orders"), where("courier_id","==",courierDocId), where("status","==","доставка")));
-        if(!snap.empty) {
-            await updateDoc(doc(db,"orders",snap.docs[0].id), { status:'выполнен', completed_at: serverTimestamp() });
-            document.getElementById('actionButtons').classList.add('hidden');
-            alert("✅ Доставка завершена!");
+        else if (e.target.id === 'completeDeliveryBtn') {
+            const snap = await getDocs(query(collection(db,"orders"), where("courier_id","==",courierDocId), where("status","==","доставка")));
+            if(!snap.empty) {
+                await updateDoc(doc(db,"orders",snap.docs[0].id), { status:'выполнен', completed_at: serverTimestamp() });
+                document.getElementById('actionButtons').classList.add('hidden');
+                alert("✅ Доставка завершена!");
+            }
         }
-    };
-    
-    document.getElementById('problemDeliveryBtn').onclick = () => document.getElementById('problemTextModal').classList.remove('hidden');
-    
-    document.getElementById('submitProblemBtn').onclick = async () => {
-        const note = document.getElementById('problemDesc').value;
-        const snap = await getDocs(query(collection(db,"orders"), where("courier_id","==",courierDocId), where("status","==","доставка")));
-        if(!snap.empty) {
-            await updateDoc(doc(db,"orders",snap.docs[0].id), { status:'проблема', problem_note: note });
-            document.getElementById('problemTextModal').classList.add('hidden');
-            document.getElementById('actionButtons').classList.add('hidden');
-            alert("⚠️ Проблема отправлена диспетчеру");
+        else if (e.target.id === 'problemDeliveryBtn') {
+            document.getElementById('problemTextModal').classList.remove('hidden');
         }
-        document.getElementById('problemDesc').value = '';
-    };
-    
-    document.getElementById('courierFinishShiftBtn').onclick = async () => { await updateDoc(doc(db,"couriers",courierDocId), { is_active: false }); alert("Смена завершена"); location.reload(); };
+        else if (e.target.id === 'submitProblemBtn') {
+            const note = document.getElementById('problemDesc').value;
+            const snap = await getDocs(query(collection(db,"orders"), where("courier_id","==",courierDocId), where("status","==","доставка")));
+            if(!snap.empty) {
+                await updateDoc(doc(db,"orders",snap.docs[0].id), { status:'проблема', problem_note: note });
+                document.getElementById('problemTextModal').classList.add('hidden');
+                document.getElementById('actionButtons').classList.add('hidden');
+                alert("⚠️ Проблема отправлена диспетчеру");
+            }
+            document.getElementById('problemDesc').value = '';
+        }
+    });
 </script>
 </body>
 </html>
