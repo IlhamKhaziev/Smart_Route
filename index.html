@@ -16,7 +16,7 @@
         .btn-primary { background: linear-gradient(95deg, #3b82f6, #8b5cf6); transition: all 0.2s; }
         .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 20px -10px #3b82f6; }
         .btn-danger { background: #dc2626; transition: all 0.2s; }
-        .btn-danger:hover { background: #b91c1c; transform: translateY(-1px); }
+        .btn-danger:hover { background: #b91c1c; }
         .status-badge { padding: 4px 12px; border-radius: 40px; font-size: 11px; font-weight: 600; width: fit-content; }
         .status-new { background: #f59e0b20; color: #fbbf24; border: 1px solid #f59e0b40; }
         .status-work { background: #3b82f620; color: #60a5fa; border: 1px solid #3b82f640; }
@@ -26,7 +26,6 @@
         .scroll-custom::-webkit-scrollbar-track { background: #1e293b; border-radius: 10px; }
         .scroll-custom::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 10px; }
         .map-container { height: 240px; border-radius: 20px; overflow: hidden; border: 1px solid #2d3a5e; }
-        .leaflet-container { background: #0f172a; }
         .history-card { background: rgba(0,0,0,0.3); border-radius: 1rem; padding: 0.75rem; margin-bottom: 0.5rem; border-left: 3px solid; }
         .stat-card { background: rgba(0,0,0,0.3); border-radius: 1rem; padding: 0.5rem; text-align: center; }
     </style>
@@ -113,21 +112,11 @@
             <button id="toggleShiftBtn" class="px-6 py-2 bg-emerald-600 rounded-xl font-bold text-sm hover:bg-emerald-500 transition" disabled>⏳ Загрузка...</button>
         </div>
 
-        <!-- Компактная статистика курьера -->
         <div class="glass rounded-2xl p-4">
             <div class="grid grid-cols-3 gap-3 text-center">
-                <div class="stat-card border-l-3 border-emerald-500">
-                    <div class="text-2xl font-bold text-emerald-400" id="courierCompletedCount">0</div>
-                    <div class="text-xs text-slate-400">✅ Выполнено</div>
-                </div>
-                <div class="stat-card">
-                    <div class="text-2xl font-bold text-blue-400" id="courierAcceptedCount">0</div>
-                    <div class="text-xs text-slate-400">📦 Принято</div>
-                </div>
-                <div class="stat-card">
-                    <div class="text-2xl font-bold text-red-400" id="courierDeclinedCount">0</div>
-                    <div class="text-xs text-slate-400">❌ Отклонено</div>
-                </div>
+                <div class="stat-card"><div class="text-2xl font-bold text-emerald-400" id="courierCompletedCount">0</div><div class="text-xs text-slate-400">✅ Выполнено</div></div>
+                <div class="stat-card"><div class="text-2xl font-bold text-blue-400" id="courierAcceptedCount">0</div><div class="text-xs text-slate-400">📦 Принято</div></div>
+                <div class="stat-card"><div class="text-2xl font-bold text-red-400" id="courierDeclinedCount">0</div><div class="text-xs text-slate-400">❌ Отклонено</div></div>
             </div>
         </div>
 
@@ -180,6 +169,7 @@
   appId: "1:610410290985:web:e59962bd9b42d935bda138",
   measurementId: "G-4CZX8SNDBD"
 };
+
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const auth = getAuth(app);
@@ -309,7 +299,7 @@
             document.getElementById('courierPanel').classList.add('hidden');
             document.getElementById('deleteAccountBtn').classList.add('hidden');
             document.getElementById('googleLoginBtn').innerHTML = `<i class="fab fa-google"></i> Войти`;
-            alert("✅ Аккаунт успешно удалён из Firebase. Вы можете зарегистрироваться заново.");
+            alert("✅ Аккаунт успешно удалён из Firebase.");
         } catch (error) {
             console.error("Ошибка при удалении аккаунта:", error);
             alert("Ошибка при удалении: " + error.message);
@@ -412,14 +402,14 @@
         onSnapshot(collection(db, "couriers"), async (snap) => { 
             let active=0; 
             const activeCouriers = [];
-            snap.forEach(d => { 
-                if(d.data().is_active===true) {
+            for (const docSnap of snap.docs) { 
+                if(docSnap.data().is_active===true) {
                     active++;
-                    activeCouriers.push(d);
+                    activeCouriers.push(docSnap);
                 }
-            }); 
+            } 
             document.getElementById('statActiveCouriers').innerText = active; 
-            renderCouriersList(activeCouriers); 
+            await renderCouriersList(activeCouriers); 
         });
     }
     
@@ -438,7 +428,7 @@
         if(confirm("Удалить заказ?")) await deleteDoc(doc(db, "orders", id)); 
     };
     
-    function renderCouriersList(activeCouriers) {
+    async function renderCouriersList(activeCouriers) {
         const container = document.getElementById('dispatcherCouriersList');
         let html = '';
         if (activeCouriers.length === 0) {
@@ -447,7 +437,9 @@
         }
         for (const docSnap of activeCouriers) {
             const c = docSnap.data();
-            html += `<div class="bg-slate-800/30 p-2 rounded-xl flex justify-between items-center"><span><i class="fas fa-user-circle text-purple-400"></i> ${c.name || 'Курьер'} (${c.vehicle_type})</span><span class="text-emerald-400 text-xs">● НА СМЕНЕ</span></div>`;
+            const userSnap = await getDoc(doc(db, "users", c.user_id));
+            const userName = userSnap.exists() ? userSnap.data().name : 'Курьер';
+            html += `<div class="bg-slate-800/30 p-2 rounded-xl flex justify-between items-center"><span><i class="fas fa-user-circle text-purple-400"></i> ${userName} (${c.vehicle_type})</span><span class="text-emerald-400 text-xs">● НА СМЕНЕ</span></div>`;
         }
         container.innerHTML = html;
     }
@@ -472,6 +464,20 @@
         document.getElementById('orderWeight').value='';
         document.getElementById('orderTimeStart').value=''; 
         document.getElementById('orderTimeEnd').value='';
+        
+        // Создаём отчёт за сегодня
+        const today = new Date().toISOString().split('T')[0];
+        const reportsQuery = query(collection(db, "reports"), where("date", "==", today));
+        const existingReports = await getDocs(reportsQuery);
+        if (existingReports.empty) {
+            await addDoc(collection(db, "reports"), {
+                date: today,
+                total_orders: 0,
+                avg_delivery_time_min: 0,
+                fuel_saved_percent: 15,
+                created_at: serverTimestamp()
+            });
+        }
     };
     
     document.getElementById('runOptimizationBtn').onclick = async () => {
@@ -482,12 +488,35 @@
         const courierIds = activeCourSnap.docs.map(d=>d.id);
         let idx=0; 
         const batch = writeBatch(db);
+        const today = new Date().toISOString().split('T')[0];
+        
         for(const docSnap of newOrdersSnap.docs){
+            const courierId = courierIds[idx % courierIds.length];
             batch.update(doc(db,"orders",docSnap.id), { 
                 status:'в работе', 
-                courier_id: courierIds[idx % courierIds.length], 
+                courier_id: courierId, 
                 assigned_at: serverTimestamp() 
             });
+            
+            // Создаём маршрут
+            const routeRef = doc(collection(db, "routes"));
+            batch.set(routeRef, {
+                courier_id: courierId,
+                date: today,
+                total_km: Math.floor(Math.random() * 20) + 10,
+                status: 'отправлен',
+                created_at: serverTimestamp()
+            });
+            
+            // Создаём точку маршрута
+            const pointRef = doc(collection(db, "routePoints"));
+            batch.set(pointRef, {
+                route_id: routeRef.id,
+                order_id: docSnap.id,
+                sequence: idx + 1,
+                created_at: serverTimestamp()
+            });
+            
             idx++;
         }
         await batch.commit();
@@ -628,6 +657,11 @@
         acceptBtn.addEventListener('click', async () => {
             if(pendingOrder) {
                 await updateDoc(doc(db, "orders", pendingOrder.id), { status: 'доставка', accepted_at: serverTimestamp() });
+                // Обновляем точку маршрута
+                const pointsSnap = await getDocs(query(collection(db, "routePoints"), where("order_id", "==", pendingOrder.id)));
+                if (!pointsSnap.empty) {
+                    await updateDoc(doc(db, "routePoints", pointsSnap.docs[0].id), { arrived_at: serverTimestamp() });
+                }
                 pendingOrder = null;
                 alert("✅ Заказ принят! Отправляйтесь к месту доставки.");
             }
@@ -652,6 +686,11 @@
             const snap = await getDocs(query(collection(db,"orders"), where("courier_id","==",courierDocId), where("status","==","доставка")));
             if(!snap.empty) {
                 currentDeliveryOrder = { id: snap.docs[0].id, ...snap.docs[0].data() };
+                // Обновляем точку маршрута
+                const pointsSnap = await getDocs(query(collection(db, "routePoints"), where("order_id", "==", currentDeliveryOrder.id)));
+                if (!pointsSnap.empty) {
+                    await updateDoc(doc(db, "routePoints", pointsSnap.docs[0].id), { arrived_at: serverTimestamp() });
+                }
                 const arrivalBtns = document.getElementById('arrivalButtons');
                 const actionBtns = document.getElementById('actionButtons');
                 if (arrivalBtns) arrivalBtns.classList.add('hidden');
@@ -666,6 +705,11 @@
             const snap = await getDocs(query(collection(db,"orders"), where("courier_id","==",courierDocId), where("status","==","доставка")));
             if(!snap.empty) {
                 await updateDoc(doc(db,"orders",snap.docs[0].id), { status:'выполнен', completed_at: serverTimestamp() });
+                // Обновляем точку маршрута
+                const pointsSnap = await getDocs(query(collection(db, "routePoints"), where("order_id", "==", snap.docs[0].id)));
+                if (!pointsSnap.empty) {
+                    await updateDoc(doc(db, "routePoints", pointsSnap.docs[0].id), { completed_at: serverTimestamp() });
+                }
                 const actionBtns = document.getElementById('actionButtons');
                 if (actionBtns) actionBtns.classList.add('hidden');
                 alert("✅ Доставка завершена!");
@@ -687,6 +731,10 @@
             const snap = await getDocs(query(collection(db,"orders"), where("courier_id","==",courierDocId), where("status","==","доставка")));
             if(!snap.empty) {
                 await updateDoc(doc(db,"orders",snap.docs[0].id), { status:'проблема', problem_note: note });
+                const pointsSnap = await getDocs(query(collection(db, "routePoints"), where("order_id", "==", snap.docs[0].id)));
+                if (!pointsSnap.empty) {
+                    await updateDoc(doc(db, "routePoints", pointsSnap.docs[0].id), { problem_note: note });
+                }
                 document.getElementById('problemTextModal').classList.add('hidden');
                 const actionBtns = document.getElementById('actionButtons');
                 if (actionBtns) actionBtns.classList.add('hidden');
