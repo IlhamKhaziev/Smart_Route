@@ -15,6 +15,8 @@
         .glass { background: rgba(18, 25, 45, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.06); }
         .btn-primary { background: linear-gradient(95deg, #3b82f6, #8b5cf6); transition: all 0.2s; }
         .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 20px -10px #3b82f6; }
+        .btn-danger { background: #dc2626; transition: all 0.2s; }
+        .btn-danger:hover { background: #b91c1c; transform: translateY(-1px); }
         .status-badge { padding: 4px 12px; border-radius: 40px; font-size: 11px; font-weight: 600; width: fit-content; }
         .status-new { background: #f59e0b20; color: #fbbf24; border: 1px solid #f59e0b40; }
         .status-work { background: #3b82f620; color: #60a5fa; border: 1px solid #3b82f640; }
@@ -37,10 +39,15 @@
             <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center"><i class="fas fa-route text-white text-lg"></i></div>
             <h1 class="text-2xl font-extrabold bg-gradient-to-r from-blue-300 to-purple-300 bg-clip-text text-transparent">SmartRoute</h1>
         </div>
-        <div id="authContainer">
-            <button id="googleLoginBtn" class="px-5 py-2 bg-slate-700 hover:bg-slate-600 rounded-xl text-sm font-medium transition flex items-center gap-2 border border-slate-600">
-                <i class="fab fa-google"></i> Войти
+        <div class="flex items-center gap-3">
+            <button id="deleteAccountBtn" class="px-4 py-2 bg-red-600/70 hover:bg-red-600 rounded-xl text-sm font-medium transition flex items-center gap-2 border border-red-500/40 hidden">
+                <i class="fas fa-trash-alt"></i> Удалить аккаунт
             </button>
+            <div id="authContainer">
+                <button id="googleLoginBtn" class="px-5 py-2 bg-slate-700 hover:bg-slate-600 rounded-xl text-sm font-medium transition flex items-center gap-2 border border-slate-600">
+                    <i class="fab fa-google"></i> Войти
+                </button>
+            </div>
         </div>
     </div>
 
@@ -146,13 +153,14 @@
 <!-- Модалки -->
 <div id="orderFormModal" class="fixed inset-0 bg-black/90 backdrop-blur z-50 hidden items-center justify-center p-4"><div class="glass rounded-2xl p-6 w-full max-w-md"><h3 class="text-xl font-bold mb-4">Новый заказ</h3><input type="text" id="orderAddress" placeholder="Адрес" class="w-full p-3 bg-slate-800 border border-slate-700 rounded-xl mb-3"><input type="text" id="orderPhone" placeholder="Телефон" class="w-full p-3 bg-slate-800 border border-slate-700 rounded-xl mb-3"><div class="grid grid-cols-2 gap-3 mb-3"><input type="datetime-local" id="orderTimeStart" class="p-3 bg-slate-800 rounded-xl"><input type="datetime-local" id="orderTimeEnd" class="p-3 bg-slate-800 rounded-xl"></div><input type="number" id="orderWeight" placeholder="Вес (кг)" class="w-full p-3 bg-slate-800 border border-slate-700 rounded-xl mb-4"><div class="flex gap-3"><button id="saveOrderFinalBtn" class="flex-1 bg-emerald-600 py-3 rounded-xl font-bold">Сохранить</button><button id="closeOrderModal" class="flex-1 bg-slate-700 py-3 rounded-xl">Отмена</button></div></div></div>
 <div id="problemTextModal" class="fixed inset-0 bg-black/90 backdrop-blur z-50 hidden items-center justify-center p-4"><div class="glass rounded-2xl p-6 w-full max-w-sm"><h3 class="font-bold mb-3">Причина проблемы</h3><textarea id="problemDesc" rows="3" class="w-full p-3 bg-slate-800 rounded-xl mb-4"></textarea><button id="submitProblemBtn" class="w-full bg-red-600 py-3 rounded-xl font-bold">Отправить</button></div></div>
+<div id="confirmDeleteModal" class="fixed inset-0 bg-black/90 backdrop-blur z-50 hidden items-center justify-center p-4"><div class="glass rounded-2xl p-6 w-full max-w-md"><h3 class="text-xl font-bold mb-3 text-red-400">⚠️ Удаление аккаунта</h3><p class="text-slate-300 mb-4">Вы уверены? Все ваши данные будут удалены из Firebase. Это действие необратимо.</p><div class="flex gap-3"><button id="confirmDeleteBtn" class="flex-1 bg-red-600 py-3 rounded-xl font-bold">Да, удалить</button><button id="cancelDeleteBtn" class="flex-1 bg-slate-700 py-3 rounded-xl font-bold">Отмена</button></div></div></div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
     import { getFirestore, collection, addDoc, getDocs, query, where, updateDoc, doc, serverTimestamp, onSnapshot, deleteDoc, writeBatch, getDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
-    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, deleteUser } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
-   const firebaseConfig = {
+    const firebaseConfig = {
   apiKey: "AIzaSyCHpQu8po8ww50PHN6BdfMrUVtAXBnmwzo",
   authDomain: "smart-route-8ff6a.firebaseapp.com",
   projectId: "smart-route-8ff6a",
@@ -219,8 +227,7 @@
 
     async function toggleShift() {
         if (!courierDocId) {
-            console.error("courierDocId не определён");
-            alert("Ошибка: данные курьера не загружены. Попробуйте перезагрузить страницу.");
+            alert("Ошибка: данные курьера не загружены.");
             return;
         }
         
@@ -246,6 +253,76 @@
         }
     }
 
+    // ========== УДАЛЕНИЕ АККАУНТА ==========
+    async function deleteAccount() {
+        if (!currentUser.uid) return;
+        
+        const confirmModal = document.getElementById('confirmDeleteModal');
+        if (confirmModal) confirmModal.classList.remove('hidden');
+    }
+    
+    async function performDeleteAccount() {
+        const confirmModal = document.getElementById('confirmDeleteModal');
+        if (confirmModal) confirmModal.classList.add('hidden');
+        
+        try {
+            // Находим пользователя в коллекции users
+            const usersQuery = query(collection(db, "users"), where("google_id", "==", currentUser.uid));
+            const usersSnap = await getDocs(usersQuery);
+            
+            if (!usersSnap.empty) {
+                const userDoc = usersSnap.docs[0];
+                const userId = userDoc.id;
+                
+                // Если пользователь - курьер, удаляем связанные данные
+                if (currentUser.role === 'курьер') {
+                    // Находим запись курьера
+                    const couriersQuery = query(collection(db, "couriers"), where("user_id", "==", userId));
+                    const couriersSnap = await getDocs(couriersQuery);
+                    
+                    if (!couriersSnap.empty) {
+                        const courierDoc = couriersSnap.docs[0];
+                        const courierId = courierDoc.id;
+                        
+                        // Обновляем заказы (убираем привязку к курьеру)
+                        const ordersQuery = query(collection(db, "orders"), where("courier_id", "==", courierId));
+                        const ordersSnap = await getDocs(ordersQuery);
+                        const batch = writeBatch(db);
+                        ordersSnap.forEach(orderDoc => {
+                            batch.update(doc(db, "orders", orderDoc.id), { courier_id: null });
+                        });
+                        await batch.commit();
+                        
+                        // Удаляем запись курьера
+                        await deleteDoc(doc(db, "couriers", courierId));
+                    }
+                }
+                
+                // Удаляем пользователя из коллекции users
+                await deleteDoc(doc(db, "users", userId));
+            }
+            
+            // Выход из аккаунта
+            await signOut(auth);
+            
+            // Обнуляем состояние
+            currentUser = { uid: null, email: null, name: null, role: null, user_id: null };
+            courierDocId = null;
+            
+            // Скрываем панели
+            document.getElementById('dispatcherPanel').classList.add('hidden');
+            document.getElementById('courierPanel').classList.add('hidden');
+            document.getElementById('deleteAccountBtn').classList.add('hidden');
+            document.getElementById('googleLoginBtn').innerHTML = `<i class="fab fa-google"></i> Войти`;
+            
+            alert("✅ Аккаунт успешно удалён из Firebase. Вы можете зарегистрироваться заново.");
+            
+        } catch (error) {
+            console.error("Ошибка при удалении аккаунта:", error);
+            alert("Ошибка при удалении: " + error.message);
+        }
+    }
+
     // Авторизация
     const loginBtn = document.getElementById('googleLoginBtn');
     loginBtn.onclick = () => signInWithPopup(auth, provider);
@@ -256,6 +333,10 @@
             currentUser.email = user.email; 
             currentUser.name = user.displayName;
             loginBtn.innerHTML = `<i class="fas fa-sign-out-alt"></i> ${user.displayName.split(' ')[0]}`;
+            
+            // Показываем кнопку удаления аккаунта
+            const deleteBtn = document.getElementById('deleteAccountBtn');
+            if (deleteBtn) deleteBtn.classList.remove('hidden');
             
             const q = query(collection(db, "users"), where("google_id", "==", user.uid));
             const snap = await getDocs(q);
@@ -272,6 +353,7 @@
             loginBtn.innerHTML = `<i class="fab fa-google"></i> Войти`;
             document.getElementById('dispatcherPanel').classList.add('hidden');
             document.getElementById('courierPanel').classList.add('hidden');
+            document.getElementById('deleteAccountBtn').classList.add('hidden');
         }
     });
     
@@ -438,7 +520,6 @@
 
     // ========== КУРЬЕР ==========
     async function initCourier() {
-        // Отключаем кнопку на время загрузки
         const toggleBtn = document.getElementById('toggleShiftBtn');
         if (toggleBtn) {
             toggleBtn.disabled = true;
@@ -448,7 +529,6 @@
         try {
             const cSnap = await getDocs(query(collection(db,"couriers"), where("user_id","==",currentUser.user_id)));
             if(cSnap.empty) {
-                console.error("Курьер не найден в БД");
                 if (toggleBtn) {
                     toggleBtn.disabled = false;
                     toggleBtn.innerHTML = '❌ Ошибка';
@@ -463,9 +543,7 @@
             
             updateShiftUI();
             
-            // Устанавливаем обработчик кнопки переключения смены
             if (toggleBtn) {
-                // Создаём новую кнопку, чтобы убрать старые обработчики
                 const newToggleBtn = toggleBtn.cloneNode(true);
                 toggleBtn.parentNode.replaceChild(newToggleBtn, toggleBtn);
                 newToggleBtn.addEventListener('click', toggleShift);
@@ -480,7 +558,6 @@
             return;
         }
         
-        // Подписываемся на заказы курьера
         onSnapshot(query(collection(db,"orders"), where("courier_id","==",courierDocId)), (snap) => {
             const orders = [];
             let completed=0, declined=0, active=0;
@@ -643,6 +720,25 @@
             }
             const problemDesc = document.getElementById('problemDesc');
             if (problemDesc) problemDesc.value = '';
+        });
+    }
+    
+    // ========== КНОПКА УДАЛЕНИЯ АККАУНТА ==========
+    const deleteAccountBtn = document.getElementById('deleteAccountBtn');
+    if (deleteAccountBtn) {
+        deleteAccountBtn.addEventListener('click', deleteAccount);
+    }
+    
+    const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+    if (confirmDeleteBtn) {
+        confirmDeleteBtn.addEventListener('click', performDeleteAccount);
+    }
+    
+    const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
+    if (cancelDeleteBtn) {
+        cancelDeleteBtn.addEventListener('click', () => {
+            const modal = document.getElementById('confirmDeleteModal');
+            if (modal) modal.classList.add('hidden');
         });
     }
 </script>
