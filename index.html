@@ -26,12 +26,13 @@
         .map-container { height: 240px; border-radius: 20px; overflow: hidden; border: 1px solid #2d3a5e; }
         .leaflet-container { background: #0f172a; }
         .history-card { background: rgba(0,0,0,0.3); border-radius: 1rem; padding: 0.75rem; margin-bottom: 0.5rem; border-left: 3px solid; }
+        .debug-console { position: fixed; bottom: 10px; right: 10px; background: #1e293b; color: #4ade80; font-size: 10px; padding: 4px 8px; border-radius: 8px; z-index: 9999; font-family: monospace; max-width: 300px; white-space: pre-wrap; word-break: break-all; }
     </style>
 </head>
 <body class="p-4 md:p-6">
+<div id="debugInfo" class="debug-console"></div>
 
 <div class="max-w-7xl mx-auto">
-    <!-- Хедер -->
     <div class="flex flex-wrap justify-between items-center gap-4 mb-7 glass p-4 rounded-2xl shadow-xl">
         <div class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center"><i class="fas fa-route text-white text-lg"></i></div>
@@ -56,14 +57,12 @@
         </div>
     </div>
 
-    <!-- Регистрация курьера (выбор транспорта) -->
+    <!-- Регистрация курьера -->
     <div id="courierVehicleModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center hidden">
         <div class="glass rounded-3xl p-6 max-w-sm w-full mx-4">
-            <h3 class="text-xl font-bold mb-3">Укажите транспорт</h3>
+            <h3 class="text-xl font-bold mb-3">Транспорт</h3>
             <select id="vehicleSelect" class="w-full p-3 bg-slate-800 rounded-xl border border-slate-600 mb-5">
-                <option value="авто">🚗 Автомобиль</option>
-                <option value="вело">🚲 Велосипед</option>
-                <option value="пешком">🚶 Пеший</option>
+                <option value="авто">🚗 Автомобиль</option><option value="вело">🚲 Велосипед</option><option value="пешком">🚶 Пеший</option>
             </select>
             <button id="saveVehicleBtn" class="w-full btn-primary py-3 rounded-xl font-bold">Завершить</button>
         </div>
@@ -100,31 +99,26 @@
 
     <!-- Панель курьера -->
     <div id="courierPanel" class="hidden max-w-5xl mx-auto space-y-6">
-        <!-- Статус смены -->
         <div id="shiftControl" class="glass rounded-2xl p-4 flex justify-between items-center flex-wrap gap-3">
             <span class="font-bold"><i class="fas fa-briefcase mr-2"></i>Статус смены:</span>
             <span id="shiftStatus" class="text-red-400 font-bold">Не в смене</span>
             <button id="toggleShiftBtn" class="px-6 py-2 bg-emerald-600 rounded-xl font-bold text-sm hover:bg-emerald-500 transition">🚀 Выйти на смену</button>
         </div>
 
-        <!-- Блок ожидания -->
         <div id="courierWaitBlock" class="glass rounded-2xl p-8 text-center">
             <i class="fas fa-hourglass-half text-4xl text-slate-500 mb-3"></i>
             <h3 class="text-xl font-bold">Ожидание заказов</h3>
             <p class="text-slate-400">Выйдите на смену, чтобы получать заказы</p>
         </div>
 
-        <!-- Активный блок -->
         <div id="courierActiveBlock" class="hidden space-y-5">
             <div class="glass rounded-2xl p-5 grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-                <div><div class="text-2xl font-bold text-emerald-400" id="courierCompletedCount">0</div><div class="text-xs text-slate-400">✅ Выполнено</div></div>
-                <div><div class="text-2xl font-bold text-red-400" id="courierDeclinedCount">0</div><div class="text-xs text-slate-400">❌ Отклонено</div></div>
-                <div><div class="text-2xl font-bold text-blue-400" id="courierActiveCount">0</div><div class="text-xs text-slate-400">📦 В работе</div></div>
-                <div><div class="text-2xl font-bold text-amber-400" id="courierTotalCount">0</div><div class="text-xs text-slate-400">📊 Всего</div></div>
+                <div><div class="text-2xl font-bold text-emerald-400" id="courierCompletedCount">0</div><div class="text-xs">✅ Выполнено</div></div>
+                <div><div class="text-2xl font-bold text-red-400" id="courierDeclinedCount">0</div><div class="text-xs">❌ Отклонено</div></div>
+                <div><div class="text-2xl font-bold text-blue-400" id="courierActiveCount">0</div><div class="text-xs">📦 В работе</div></div>
+                <div><div class="text-2xl font-bold text-amber-400" id="courierTotalCount">0</div><div class="text-xs">📊 Всего</div></div>
             </div>
-
             <div class="glass rounded-2xl p-4"><div id="courierMap" class="map-container" style="height: 260px;"></div></div>
-
             <div id="currentTaskCard" class="glass rounded-2xl p-6 border-l-8 border-l-blue-500">
                 <div class="text-xs uppercase text-blue-400 font-bold">Новый заказ</div>
                 <h2 id="currentAddressDisplay" class="text-xl font-bold mb-2 break-words">—</h2>
@@ -134,16 +128,13 @@
                     <button id="acceptOrderBtn" class="flex-1 py-4 bg-emerald-600 rounded-xl font-bold text-lg"><i class="fas fa-check-circle mr-2"></i> ПРИНЯТЬ</button>
                     <button id="declineOrderBtn" class="flex-1 py-4 bg-red-600/80 rounded-xl font-bold text-lg"><i class="fas fa-times-circle mr-2"></i> ОТКЛОНИТЬ</button>
                 </div>
-                <div id="arrivalButtons" class="hidden space-y-3"><button id="arrivedBtn" class="w-full py-4 bg-blue-600 rounded-xl font-bold text-lg">📍 Я ПРИБЫЛ НА МЕСТО</button></div>
+                <div id="arrivalButtons" class="hidden space-y-3"><button id="arrivedBtn" class="w-full py-4 bg-blue-600 rounded-xl font-bold text-lg">📍 Я ПРИБЫЛ</button></div>
                 <div id="actionButtons" class="hidden grid grid-cols-2 gap-4"><button id="completeDeliveryBtn" class="py-4 bg-emerald-600 rounded-xl font-bold"><i class="fas fa-check-circle mr-1"></i> Выполнен</button><button id="problemDeliveryBtn" class="py-4 bg-red-600/30 border border-red-500 rounded-xl font-bold"><i class="fas fa-exclamation-triangle mr-1"></i> Проблема</button></div>
             </div>
-
             <div class="glass rounded-2xl p-5">
                 <h3 class="font-bold mb-3"><i class="fas fa-history text-blue-400 mr-2"></i> История заказов</h3>
                 <div id="courierHistoryList" class="max-h-48 overflow-y-auto scroll-custom space-y-2"></div>
             </div>
-
-            <button id="courierFinishShiftBtn" class="hidden w-full py-4 bg-slate-800 border border-slate-700 rounded-xl font-bold hover:bg-slate-700">🏁 Завершить смену</button>
         </div>
     </div>
 </div>
@@ -173,15 +164,25 @@
     let currentUser = { uid: null, email: null, name: null, role: null, user_id: null };
     let courierDocId = null;
     let courierIsActive = false;
-    let courierDataLoaded = false;
     let pendingOrder = null;
     let currentDeliveryOrder = null;
     let mapInstance = null;
+    let ordersUnsubscribe = null;
+
+    function debugLog(msg) {
+        const el = document.getElementById('debugInfo');
+        if (el) {
+            el.innerHTML = new Date().toLocaleTimeString() + ' ' + msg;
+            setTimeout(() => { if(el.innerHTML === msg) el.innerHTML = ''; }, 5000);
+        }
+        console.log(msg);
+    }
 
     async function geocodeAddress(address) {
         try { const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`); const data = await res.json(); if(data.length) return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) }; } catch(e) {}
         return { lat: 55.751244, lng: 37.618423 };
     }
+    
     async function showAddressOnMap(address) {
         if(!mapInstance && document.getElementById('courierMap')) { 
             mapInstance = L.map('courierMap').setView([55.751244, 37.618423], 13); 
@@ -202,79 +203,81 @@
     function updateShiftUI() {
         const statusSpan = document.getElementById('shiftStatus');
         const btn = document.getElementById('toggleShiftBtn');
+        debugLog(`updateShiftUI: courierIsActive=${courierIsActive}, courierDocId=${courierDocId}`);
         if (courierIsActive) {
-            if (statusSpan) {
-                statusSpan.innerHTML = '✅ На смене';
-                statusSpan.className = 'text-emerald-400 font-bold';
-            }
-            if (btn) {
-                btn.innerHTML = '🏁 Завершить смену';
-                btn.classList.remove('bg-emerald-600');
-                btn.classList.add('bg-red-600');
-            }
+            if (statusSpan) { statusSpan.innerHTML = '✅ На смене'; statusSpan.className = 'text-emerald-400 font-bold'; }
+            if (btn) { btn.innerHTML = '🏁 Завершить смену'; btn.classList.remove('bg-emerald-600'); btn.classList.add('bg-red-600'); }
         } else {
-            if (statusSpan) {
-                statusSpan.innerHTML = '❌ Не в смене';
-                statusSpan.className = 'text-red-400 font-bold';
-            }
-            if (btn) {
-                btn.innerHTML = '🚀 Выйти на смену';
-                btn.classList.remove('bg-red-600');
-                btn.classList.add('bg-emerald-600');
-            }
+            if (statusSpan) { statusSpan.innerHTML = '❌ Не в смене'; statusSpan.className = 'text-red-400 font-bold'; }
+            if (btn) { btn.innerHTML = '🚀 Выйти на смену'; btn.classList.remove('bg-red-600'); btn.classList.add('bg-emerald-600'); }
         }
     }
 
-    async function toggleShift() {
+    // Глобальная функция для переключения смены
+    window.toggleShiftGlobal = async function() {
+        debugLog(`toggleShift вызвана! courierDocId=${courierDocId}, courierIsActive=${courierIsActive}`);
         if (!courierDocId) {
-            console.error("courierDocId не определён");
-            alert("Ошибка: данные курьера не загружены. Попробуйте перезагрузить страницу.");
+            debugLog("ОШИБКА: courierDocId не определён");
+            alert("Ошибка: данные курьера не загружены. Подождите или перезагрузите страницу.");
             return;
         }
-        
         try {
-            if (courierIsActive) {
-                await updateDoc(doc(db, "couriers", courierDocId), { is_active: false });
-                courierIsActive = false;
-                alert("✅ Смена завершена");
-            } else {
-                await updateDoc(doc(db, "couriers", courierDocId), { is_active: true });
-                courierIsActive = true;
-                alert("✅ Вы вышли на смену! Теперь вам будут приходить заказы.");
-            }
+            const newStatus = !courierIsActive;
+            debugLog(`Устанавливаем is_active = ${newStatus}`);
+            await updateDoc(doc(db, "couriers", courierDocId), { is_active: newStatus });
+            courierIsActive = newStatus;
             updateShiftUI();
+            alert(newStatus ? "✅ Вы вышли на смену!" : "✅ Смена завершена");
+            debugLog(`Готово, новое состояние: ${courierIsActive}`);
         } catch (error) {
-            console.error("Ошибка при переключении смены:", error);
+            debugLog(`Ошибка: ${error.message}`);
             alert("Ошибка: " + error.message);
         }
-    }
+    };
 
     // Авторизация
     const loginBtn = document.getElementById('googleLoginBtn');
     loginBtn.onclick = () => signInWithPopup(auth, provider);
+    
     onAuthStateChanged(auth, async (user) => {
         if(user) {
             currentUser.uid = user.uid; currentUser.email = user.email; currentUser.name = user.displayName;
             loginBtn.innerHTML = `<i class="fas fa-sign-out-alt"></i> ${user.displayName.split(' ')[0]}`;
             const q = query(collection(db, "users"), where("google_id", "==", user.uid));
             const snap = await getDocs(q);
-            if(snap.empty) document.getElementById('roleModal').classList.remove('hidden');
-            else { const data = snap.docs[0].data(); currentUser.role = data.role; currentUser.user_id = snap.docs[0].id; initUI(); }
+            if(snap.empty) {
+                debugLog("Новый пользователь, показываем выбор роли");
+                document.getElementById('roleModal').classList.remove('hidden');
+            } else { 
+                const data = snap.docs[0].data(); 
+                currentUser.role = data.role; 
+                currentUser.user_id = snap.docs[0].id; 
+                debugLog(`Существующий пользователь, роль=${currentUser.role}`);
+                initUI(); 
+            }
         } else { 
+            debugLog("Пользователь не авторизован");
             loginBtn.innerHTML = `<i class="fab fa-google"></i> Войти`;
         }
     });
     
     window.pickRole = async (role) => {
+        debugLog(`Выбрана роль: ${role}`);
         const userRef = await addDoc(collection(db, "users"), { google_id: currentUser.uid, email: currentUser.email, name: currentUser.name, role: role, created_at: serverTimestamp() });
         currentUser.user_id = userRef.id;
-        if(role === 'курьер') document.getElementById('courierVehicleModal').classList.remove('hidden');
-        else { currentUser.role = role; initUI(); }
+        if(role === 'курьер') {
+            debugLog("Показываем выбор транспорта");
+            document.getElementById('courierVehicleModal').classList.remove('hidden');
+        } else { 
+            currentUser.role = role; 
+            initUI(); 
+        }
     };
     document.getElementById('chooseDispatcher').onclick = () => pickRole('диспетчер');
     document.getElementById('chooseCourier').onclick = () => pickRole('курьер');
     document.getElementById('saveVehicleBtn').onclick = async () => {
         const vehicle = document.getElementById('vehicleSelect').value;
+        debugLog(`Сохранение курьера, транспорт=${vehicle}`);
         await addDoc(collection(db, "couriers"), { user_id: currentUser.user_id, vehicle_type: vehicle, is_active: false, last_lat: 0, last_lng: 0, gps_updated_at: serverTimestamp() });
         document.getElementById('courierVehicleModal').classList.add('hidden');
         currentUser.role = 'курьер';
@@ -284,10 +287,12 @@
     function initUI() {
         document.getElementById('roleModal').classList.add('hidden');
         if(currentUser.role === 'диспетчер') {
+            debugLog("Инициализация панели диспетчера");
             document.getElementById('dispatcherPanel').classList.remove('hidden');
             document.getElementById('courierPanel').classList.add('hidden');
             initDispatcher();
         } else {
+            debugLog("Инициализация панели курьера");
             document.getElementById('dispatcherPanel').classList.add('hidden');
             document.getElementById('courierPanel').classList.remove('hidden');
             initCourier();
@@ -360,33 +365,37 @@
 
     // ========== КУРЬЕР ==========
     async function initCourier() {
-        // Загружаем данные курьера
+        debugLog("Загрузка данных курьера...");
         const cSnap = await getDocs(query(collection(db,"couriers"), where("user_id","==",currentUser.user_id)));
         if(cSnap.empty) {
-            console.error("Курьер не найден в БД");
+            debugLog("Курьер не найден в БД!");
             return;
         }
         const courierDoc = cSnap.docs[0];
         courierDocId = courierDoc.id;
         const courierData = courierDoc.data();
         courierIsActive = courierData.is_active === true;
-        courierDataLoaded = true;
+        debugLog(`Курьер загружен: ID=${courierDocId}, is_active=${courierIsActive}`);
         
         updateShiftUI();
         
-        // Устанавливаем обработчик кнопки переключения смены
+        // Привязываем глобальную функцию к кнопке
         const toggleBtn = document.getElementById('toggleShiftBtn');
         if (toggleBtn) {
             // Убираем старые обработчики
-            const newToggleBtn = toggleBtn.cloneNode(true);
-            toggleBtn.parentNode.replaceChild(newToggleBtn, toggleBtn);
-            newToggleBtn.addEventListener('click', toggleShift);
+            const newBtn = toggleBtn.cloneNode(true);
+            toggleBtn.parentNode.replaceChild(newBtn, toggleBtn);
+            newBtn.onclick = () => window.toggleShiftGlobal();
+            debugLog("Обработчик кнопки привязан");
         } else {
-            console.error("Кнопка toggleShiftBtn не найдена");
+            debugLog("Кнопка toggleShiftBtn не найдена!");
         }
         
+        // Отписываемся от старых подписок
+        if (ordersUnsubscribe) ordersUnsubscribe();
+        
         // Подписываемся на заказы курьера
-        onSnapshot(query(collection(db,"orders"), where("courier_id","==",courierDocId)), (snap) => {
+        ordersUnsubscribe = onSnapshot(query(collection(db,"orders"), where("courier_id","==",courierDocId)), (snap) => {
             const orders = [];
             let completed=0, declined=0, active=0;
             snap.forEach(d => { 
@@ -460,18 +469,18 @@
         container.innerHTML = html || '<div class="text-center text-slate-500 py-4">История пуста</div>';
     }
     
-    // Обработчики кнопок действий с заказами
+    // Обработчики для заказов
     document.getElementById('acceptOrderBtn')?.addEventListener('click', async () => {
         if(pendingOrder) {
             await updateDoc(doc(db, "orders", pendingOrder.id), { status: 'доставка', accepted_at: serverTimestamp() });
             pendingOrder = null;
-            alert("✅ Заказ принят! Отправляйтесь к месту доставки.");
+            alert("✅ Заказ принят!");
         }
     });
     
     document.getElementById('declineOrderBtn')?.addEventListener('click', async () => {
         if(pendingOrder) {
-            const reason = prompt("Укажите причину отклонения:");
+            const reason = prompt("Причина отклонения:");
             await updateDoc(doc(db, "orders", pendingOrder.id), { status: 'отклонён', decline_reason: reason, declined_at: serverTimestamp() });
             pendingOrder = null;
             alert("❌ Заказ отклонён");
@@ -481,7 +490,6 @@
     document.getElementById('arrivedBtn')?.addEventListener('click', async () => {
         const snap = await getDocs(query(collection(db,"orders"), where("courier_id","==",courierDocId), where("status","==","доставка")));
         if(!snap.empty) {
-            currentDeliveryOrder = { id: snap.docs[0].id, ...snap.docs[0].data() };
             document.getElementById('arrivalButtons').classList.add('hidden');
             document.getElementById('actionButtons').classList.remove('hidden');
         }
@@ -507,7 +515,7 @@
             await updateDoc(doc(db,"orders",snap.docs[0].id), { status:'проблема', problem_note: note });
             document.getElementById('problemTextModal').classList.add('hidden');
             document.getElementById('actionButtons').classList.add('hidden');
-            alert("⚠️ Проблема отправлена диспетчеру");
+            alert("⚠️ Проблема отправлена");
         }
         document.getElementById('problemDesc').value = '';
     });
